@@ -1,0 +1,46 @@
+# Configuration files with sensitive data
+config.js
+nocodb-config.js
+.env
+
+# Docker
+.dockerignore
+
+# Backups
+backups/
+*.sql
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Node modules (si jamais utilisé)
+node_modules/
+package-lock.json
+
+# Python (si jamais utilisé)
+__pycache__/
+*.py[cod]
+venv/
+env/
+
+# Archives
+docs/archive/

@@ -1,0 +1,1925 @@
+/* ===================================
+   PAPERMOD THEME - CSS Variables
+   =================================== */
+:root {
+    /* PaperMod Light Theme Colors */
+    --theme: #fff;
+    --entry: #fff;
+    --primary: rgba(0, 0, 0, 0.88);
+    --secondary: rgba(0, 0, 0, 0.56);
+    --tertiary: rgba(0, 0, 0, 0.16);
+    --content: rgba(0, 0, 0, 0.88);
+    --hljs-bg: #f5f5f5;
+    --code-bg: #f5f5f5;
+    --border: #e5e5e5;
+
+    /* Accent color - customizable */
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+
+    /* Status colors - kept from original */
+    --status-success: #10b981;
+    --status-warning: #f59e0b;
+    --status-danger: #ef4444;
+
+    /* Shadows - PaperMod style (subtle) */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+    /* Transitions */
+    --transition: all 0.2s ease;
+}
+
+/* Dark mode support */
+[data-theme="dark"] {
+    --theme: #1a1a1a;
+    --entry: #2a2a2a;
+    --primary: rgba(255, 255, 255, 0.84);
+    --secondary: rgba(255, 255, 255, 0.56);
+    --tertiary: rgba(255, 255, 255, 0.16);
+    --content: rgba(255, 255, 255, 0.84);
+    --hljs-bg: #2a2a2a;
+    --code-bg: #2a2a2a;
+    --border: #333;
+}
+
+/* ===================================
+   BASE STYLES - PaperMod Reset
+   =================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+                 Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background: var(--theme);
+    color: var(--primary);
+    min-height: 100vh;
+    line-height: 1.6;
+    font-size: 16px;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    padding-bottom: 90px; /* Espace pour la bottom nav */
+}
+
+/* ===================================
+   HEADER - PaperMod Style
+   =================================== */
+header {
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+}
+
+header h1 {
+    color: var(--primary);
+    margin-bottom: 20px;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+/* ===================================
+   SEARCH SECTION
+   =================================== */
+.search-section {
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.search-label {
+    display: block;
+    font-weight: 500;
+    color: var(--primary);
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.city-search-container,
+.address-search-container {
+    position: relative;
+}
+
+.input-with-badge {
+    position: relative;
+    display: flex;
+    gap: 8px;
+}
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 15px;
+    font-family: inherit;
+    background: var(--theme);
+    color: var(--primary);
+    transition: var(--transition);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+input[type="text"]:disabled {
+    background: var(--code-bg);
+    color: var(--secondary);
+    cursor: not-allowed;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.detect-btn {
+    padding: 10px 16px;
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.detect-btn:hover {
+    background: var(--code-bg);
+    border-color: var(--accent);
+}
+
+.selected-city {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 6px;
+    color: var(--primary);
+    font-weight: 500;
+    display: none;
+}
+
+.selected-city.active {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.city-badge {
+    background: var(--accent);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.remove-city {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--secondary);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 0 4px;
+    transition: var(--transition);
+}
+
+.remove-city:hover {
+    color: var(--status-danger);
+}
+
+/* ===================================
+   SEARCH RESULTS
+   =================================== */
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-top: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: var(--shadow-lg);
+}
+
+/* Search results dans le modal doivent être au-dessus du modal lui-même */
+.modal .search-results {
+    z-index: 10001;
+}
+
+.search-results.active {
+    display: block;
+}
+
+.result-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-item:hover {
+    background: var(--code-bg);
+}
+
+.result-item.selected {
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.result-name {
+    font-weight: 500;
+    color: var(--primary);
+    margin-bottom: 2px;
+}
+
+.result-context {
+    font-size: 13px;
+    color: var(--secondary);
+}
+
+.result-loading {
+    padding: 12px 16px;
+    text-align: center;
+    color: var(--secondary);
+}
+
+/* ===================================
+   GOOGLE AUTHENTICATION SECTION
+   =================================== */
+.google-auth-section {
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.auth-status {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 200px;
+}
+
+#auth-status-text {
+    font-weight: 500;
+    color: var(--primary);
+    font-size: 14px;
+}
+
+.sync-status {
+    font-size: 12px;
+    color: var(--secondary);
+    font-style: italic;
+}
+
+.sync-status.syncing {
+    color: var(--accent);
+}
+
+.sync-status.synced {
+    color: var(--status-success);
+}
+
+.sync-status.error {
+    color: var(--status-danger);
+}
+
+.auth-status.connected {
+    color: var(--status-success);
+}
+
+.auth-status.disconnected {
+    color: var(--secondary);
+}
+
+/* ===================================
+   CONTROLS / BUTTONS - PaperMod Style
+   =================================== */
+.controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--entry);
+    color: var(--primary);
+    font-family: inherit;
+}
+
+.btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--entry);
+    color: var(--primary);
+}
+
+.btn-info {
+    background: var(--entry);
+    color: var(--primary);
+}
+
+.btn-success {
+    background: var(--status-success);
+    color: white;
+    border-color: var(--status-success);
+}
+
+.btn-success:hover {
+    background: #059669;
+    border-color: #059669;
+    color: white;
+}
+
+.btn-danger {
+    background: var(--status-danger);
+    color: white;
+    border-color: var(--status-danger);
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: white;
+}
+
+.icon {
+    font-size: 16px;
+}
+
+/* ===================================
+   TABS - PaperMod Style
+   =================================== */
+.tabs-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--secondary);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+}
+
+.tab-btn:hover {
+    color: var(--primary);
+    background: var(--code-bg);
+}
+
+.tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ===================================
+   MAP CONTAINER
+   =================================== */
+.map-container {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+#map {
+    height: calc(100vh - 220px);
+    min-height: 400px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 1;
+}
+
+/* ===================================
+   INFO PANEL - PaperMod Card Style
+   =================================== */
+.info-panel {
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.info-panel h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.3px;
+}
+
+/* ===================================
+   STATISTICS CARDS - PaperMod Style
+   =================================== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: var(--theme);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.stat-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: var(--secondary);
+    font-weight: 500;
+}
+
+.stat-card.stat-effectue .stat-value {
+    color: var(--status-success);
+}
+
+.stat-card.stat-repasser .stat-value {
+    color: var(--status-warning);
+}
+
+.stat-card.stat-refus .stat-value {
+    color: var(--status-danger);
+}
+
+/* ===================================
+   MONEY STATS
+   =================================== */
+.stats-money {
+    background: var(--theme);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+}
+
+.stats-money strong {
+    color: var(--primary);
+    font-size: 14px;
+}
+
+.money-amount {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 8px 0;
+}
+
+.payment-breakdown {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.payment-breakdown p {
+    font-size: 14px;
+    color: var(--secondary);
+    margin: 4px 0;
+}
+
+/* ===================================
+   INSTRUCTIONS - PaperMod List Style
+   =================================== */
+.instructions {
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.instructions h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 12px;
+    letter-spacing: -0.3px;
+}
+
+.instructions ul {
+    list-style: none;
+    padding: 0;
+}
+
+.instructions li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--secondary);
+    line-height: 1.6;
+}
+
+.instructions li:last-child {
+    border-bottom: none;
+}
+
+.instructions strong {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+/* ===================================
+   MODAL - PaperMod Style
+   =================================== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 100%;
+    max-width: 600px;
+    box-shadow: var(--shadow-lg);
+    animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary);
+    letter-spacing: -0.3px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: var(--secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    background: var(--code-bg);
+    color: var(--primary);
+}
+
+/* ===================================
+   FORM - PaperMod Style
+   =================================== */
+form {
+    padding: 24px;
+}
+
+.form-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 4px;
+    background: var(--code-bg);
+    border-radius: 6px;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--secondary);
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.mode-btn:hover {
+    color: var(--primary);
+}
+
+.mode-btn.active {
+    background: var(--entry);
+    color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.address-mode {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+    position: relative; /* Pour le positionnement des search-results */
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    color: var(--primary);
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.form-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--secondary);
+    margin-top: 4px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.manual-location-info {
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.info-text {
+    color: var(--primary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.info-text strong {
+    color: var(--accent);
+}
+
+#click-map-instruction {
+    color: var(--secondary);
+    font-size: 13px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+/* ===================================
+   SIDE PANEL - PaperMod Drawer Style
+   =================================== */
+.side-panel {
+    position: fixed;
+    top: 0;
+    right: -450px;
+    width: 450px;
+    height: 100vh;
+    background: var(--entry);
+    border-left: 1px solid var(--border);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.side-panel.active {
+    right: 0;
+}
+
+.side-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.side-panel-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary);
+    letter-spacing: -0.3px;
+}
+
+.panel-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: var(--secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+
+.panel-close:hover {
+    background: var(--code-bg);
+    color: var(--primary);
+}
+
+/* Quick Search */
+.quick-search {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--entry);
+}
+
+.quick-search input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--theme);
+    color: var(--primary);
+    transition: var(--transition);
+}
+
+.quick-search input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Date Filters */
+.date-filters {
+    display: flex;
+    gap: 10px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--entry);
+    align-items: flex-end;
+}
+
+.date-filter-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.date-filter-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--secondary);
+}
+
+.date-input {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--theme);
+    color: var(--primary);
+    font-family: inherit;
+    transition: var(--transition);
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-reset-dates {
+    padding: 8px 12px;
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--secondary);
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.btn-reset-dates:hover {
+    background: var(--code-bg);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.side-panel-filters {
+    display: flex;
+    gap: 8px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--code-bg);
+}
+
+.filter-btn {
+    padding: 6px 12px;
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--secondary);
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.filter-btn:hover {
+    color: var(--primary);
+    border-color: var(--accent);
+}
+
+.filter-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.side-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--secondary);
+    padding: 40px 20px;
+    font-size: 14px;
+}
+
+/* ===================================
+   DISTRIBUTION ITEMS
+   =================================== */
+.distribution-item {
+    background: var(--theme);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: var(--transition);
+}
+
+.distribution-item:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.distribution-item.hidden {
+    display: none;
+}
+
+.dist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 10px;
+}
+
+.dist-address {
+    font-weight: 500;
+    color: var(--primary);
+    font-size: 15px;
+    flex: 1;
+}
+
+.dist-status-badge {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.dist-status-badge.effectue {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--status-success);
+}
+
+.dist-status-badge.repasser {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--status-warning);
+}
+
+.dist-status-badge.refus {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--status-danger);
+}
+
+.dist-info {
+    font-size: 14px;
+    color: var(--secondary);
+    margin-bottom: 4px;
+}
+
+.dist-amount {
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.dist-notes {
+    font-size: 13px;
+    color: var(--secondary);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-style: italic;
+}
+
+.dist-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.dist-actions button {
+    flex: 1;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--entry);
+    color: var(--primary);
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.dist-actions button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.dist-actions .delete-btn:hover {
+    border-color: var(--status-danger);
+    color: var(--status-danger);
+}
+
+/* ===================================
+   STATISTICS DASHBOARD - PaperMod
+   =================================== */
+.stats-dashboard {
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.stats-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+}
+
+/* Large stat cards grid */
+.stats-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.stat-card-large {
+    background: var(--theme);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.stat-card-large:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.stat-icon-large {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.stat-value-large {
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.stat-label-large {
+    font-size: 14px;
+    color: var(--secondary);
+    font-weight: 500;
+}
+
+.stat-card-large.success .stat-value-large {
+    color: var(--status-success);
+}
+
+.stat-card-large.warning .stat-value-large {
+    color: var(--status-warning);
+}
+
+.stat-card-large.danger .stat-value-large {
+    color: var(--status-danger);
+}
+
+/* ===================================
+   CHARTS - PaperMod Card Style
+   =================================== */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 32px;
+}
+
+.chart-container {
+    background: var(--theme);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    transition: var(--transition);
+}
+
+.chart-container:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.chart-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.3px;
+}
+
+.chart-wide {
+    grid-column: span 2;
+}
+
+canvas {
+    max-height: 300px;
+}
+
+/* ===================================
+   DETAILED STATS TABLE
+   =================================== */
+.detailed-stats {
+    background: var(--theme);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.detailed-stats h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.3px;
+}
+
+.stats-table {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.stats-label {
+    font-size: 14px;
+    color: var(--secondary);
+    font-weight: 500;
+}
+
+.stats-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* ===================================
+   LEAFLET CUSTOMIZATION - PaperMod
+   =================================== */
+.leaflet-control-zoom a {
+    background: var(--entry) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--primary) !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: var(--code-bg) !important;
+    border-color: var(--accent) !important;
+}
+
+.leaflet-popup-content-wrapper {
+    background: var(--entry) !important;
+    color: var(--primary) !important;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg) !important;
+}
+
+.leaflet-popup-tip {
+    background: var(--entry) !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+    color: var(--secondary) !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+    color: var(--primary) !important;
+}
+
+/* ===================================
+   MARKERS - Custom Colors
+   =================================== */
+.marker-effectue {
+    background-color: var(--status-success);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: var(--shadow-md);
+}
+
+.marker-repasser {
+    background-color: var(--status-warning);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: var(--shadow-md);
+}
+
+.marker-refus {
+    background-color: var(--status-danger);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: var(--shadow-md);
+}
+
+/* User position marker */
+.user-marker {
+    background-color: var(--accent);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+}
+
+.accuracy-circle {
+    fill: var(--accent);
+    fill-opacity: 0.1;
+    stroke: var(--accent);
+    stroke-opacity: 0.3;
+    stroke-width: 2;
+}
+
+/* ===================================
+   RESPONSIVE DESIGN - PaperMod Style
+   =================================== */
+@media (max-width: 1200px) {
+    .container {
+        padding: 16px;
+    }
+
+    header h1 {
+        font-size: 24px;
+    }
+
+    .stats-cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 968px) {
+    header {
+        padding: 20px;
+    }
+
+    header h1 {
+        font-size: 22px;
+    }
+
+    .search-section {
+        grid-template-columns: 1fr;
+    }
+
+    .map-container {
+        grid-template-columns: 1fr;
+    }
+
+    #map {
+        height: 500px;
+    }
+
+    .controls {
+        justify-content: center;
+    }
+
+    .side-panel {
+        width: 100%;
+        right: -100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .chart-wide {
+        grid-column: span 1;
+    }
+
+    .stats-table {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-value-large {
+        font-size: 36px;
+    }
+
+    .stats-title {
+        font-size: 22px;
+    }
+
+    .tabs-container {
+        gap: 6px;
+    }
+
+    .tab-btn {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+}
+
+@media (max-width: 640px) {
+    body {
+        font-size: 15px;
+    }
+
+    header {
+        padding: 16px;
+    }
+
+    header h1 {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+
+    .stats-cards-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .tabs-container {
+        flex-direction: column;
+        gap: 0;
+        border-bottom: none;
+    }
+
+    .tab-btn {
+        font-size: 14px;
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        border-radius: 0;
+    }
+
+    .tab-btn.active {
+        background: var(--code-bg);
+    }
+
+    .controls {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #map {
+        height: 400px;
+    }
+
+    .stats-dashboard {
+        padding: 16px;
+    }
+
+    .stats-title {
+        font-size: 20px;
+    }
+
+    .chart-container {
+        padding: 16px;
+    }
+
+    canvas {
+        max-height: 250px;
+    }
+
+    .modal-content {
+        width: 95%;
+    }
+
+    .stat-value-large {
+        font-size: 32px;
+    }
+
+    .stat-icon-large {
+        font-size: 40px;
+    }
+
+    /* Bottom nav responsive */
+    .bottom-nav {
+        height: 65px;
+    }
+
+    .bottom-nav-btn {
+        font-size: 11px;
+        gap: 2px;
+    }
+
+    .bottom-nav-btn i {
+        width: 20px;
+        height: 20px;
+    }
+
+    .bottom-nav-btn span {
+        display: none; /* Masquer le texte sur petit écran */
+    }
+
+    .container {
+        padding-bottom: 80px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 12px;
+    }
+
+    header h1 {
+        font-size: 18px;
+    }
+
+    .btn {
+        font-size: 13px;
+        padding: 10px 16px;
+    }
+
+    #map {
+        height: 350px;
+    }
+
+    .stat-value {
+        font-size: 28px;
+    }
+
+    .money-amount {
+        font-size: 28px;
+    }
+
+    .stat-value-large {
+        font-size: 28px;
+    }
+
+    .stat-icon-large {
+        font-size: 36px;
+    }
+}
+
+/* ===================================
+   UTILITIES
+   =================================== */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-1 {
+    margin-top: 8px;
+}
+
+.mt-2 {
+    margin-top: 16px;
+}
+
+.mb-1 {
+    margin-bottom: 8px;
+}
+
+.mb-2 {
+    margin-bottom: 16px;
+}
+
+/* ===================================
+   AUTHENTICATION STYLES
+   =================================== */
+
+/* Login Screen */
+.login-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.login-container {
+    background: var(--theme);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    margin: 20px;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header h1 {
+    color: var(--primary);
+    margin: 0 0 10px 0;
+    font-size: 28px;
+}
+
+.login-subtitle {
+    color: var(--secondary);
+    margin: 0;
+    font-size: 14px;
+}
+
+.login-form .form-group {
+    margin-bottom: 20px;
+}
+
+.login-form label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    transition: var(--transition);
+    box-sizing: border-box;
+}
+
+.login-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.login-error {
+    background: #fee;
+    color: #c00;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border: 1px solid #fcc;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.login-warning {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 12px;
+    color: var(--secondary);
+}
+
+/* User Info in Header */
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    background: var(--entry);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--status-success);
+    animation: pulse-dot 2s infinite;
+}
+
+.status-indicator.offline {
+    background: var(--status-danger);
+    animation: none;
+}
+
+.status-text {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.pending-count {
+    color: var(--status-warning);
+    font-weight: 600;
+    font-size: 12px;
+    padding: 2px 8px;
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: 4px;
+}
+
+@keyframes pulse-dot {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 8px 15px;
+    background: var(--entry);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.user-name {
+    color: var(--primary);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.btn-logout {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* Responsive header adjustments */
+header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+@media (max-width: 768px) {
+    .user-info {
+        order: -1;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .login-container {
+        padding: 30px 20px;
+    }
+}
+
+/* ===================================
+   SIDEBAR FLOTTANTE
+   =================================== */
+
+/* ===================================
+   BOTTOM NAVIGATION BAR
+   =================================== */
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: var(--entry);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 max(env(safe-area-inset-right), 10px)
+            env(safe-area-inset-bottom)
+            max(env(safe-area-inset-left), 10px);
+}
+
+.bottom-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1;
+    height: 100%;
+    max-width: 120px;
+    background: none;
+    border: none;
+    color: var(--secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+    padding: 8px;
+    position: relative;
+}
+
+.bottom-nav-btn i {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2;
+}
+
+.bottom-nav-btn:hover {
+    color: var(--primary);
+    background: var(--code-bg);
+}
+
+.bottom-nav-btn.active {
+    color: var(--accent);
+}
+
+.bottom-nav-btn.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 0 0 3px 3px;
+}
+
+/* Badge pour le bouton Ajouter */
+.bottom-nav-btn#add-distribution-btn-bottom {
+    color: var(--accent);
+}
+
+.bottom-nav-btn#add-distribution-btn-bottom:hover {
+    color: var(--accent-hover);
+    background: rgba(37, 99, 235, 0.1);
+}
+
+/* ===================================
+   LIST TAB (Full Screen)
+   =================================== */
+
+.list-container {
+    background: var(--entry);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    min-height: calc(100vh - 220px);
+}
+
+.list-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 20px;
+}
+
+.list-search {
+    margin-bottom: 16px;
+}
+
+.list-search input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: var(--theme);
+    color: var(--primary);
+    transition: var(--transition);
+}
+
+.list-search input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.list-date-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: flex-end;
+}
+
+.list-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.list-content {
+    max-height: calc(100vh - 450px);
+    overflow-y: auto;
+}

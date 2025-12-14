@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte Interactive - Distribution Calendriers Pompiers</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Écran de connexion -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>Connexion</h1>
+                <p class="login-subtitle">Distribution Calendriers Pompiers</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="login-username">Nom d'utilisateur</label>
+                    <input
+                        type="text"
+                        id="login-username"
+                        name="username"
+                        required
+                        autocomplete="username"
+                        placeholder="Entrez votre nom d'utilisateur"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Mot de passe</label>
+                    <input
+                        type="password"
+                        id="login-password"
+                        name="password"
+                        required
+                        autocomplete="current-password"
+                        placeholder="Entrez votre mot de passe"
+                    >
+                </div>
+                <div id="login-error" class="login-error" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary btn-login">
+                    Se connecter
+                </button>
+                <p class="login-warning">⚠️ Usage interne uniquement</p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application principale -->
+    <div id="main-app" class="container" style="display: none;">
+        <header>
+            <h1>Carte Interactive de Distribution</h1>
+
+            <div class="header-controls">
+                <!-- Statut de connexion -->
+                <div class="connection-status" id="connection-status">
+                    <span class="status-indicator" id="status-indicator"></span>
+                    <span class="status-text" id="status-text">En ligne</span>
+                    <span class="pending-count" id="pending-count" style="display: none;">0 en attente</span>
+                </div>
+
+                <!-- Info utilisateur -->
+                <div class="user-info">
+                    <span class="user-name" id="user-name-display">Chargement...</span>
+                    <button id="logout-btn" class="btn btn-secondary btn-logout">
+                        Déconnexion
+                    </button>
+                </div>
+            </div>
+        </header>
+
+
+        <!-- Contenu carte -->
+        <div id="map-tab" class="tab-content active">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+        </div>
+
+        <!-- Contenu statistiques -->
+        <div id="stats-tab" class="tab-content">
+            <div class="stats-dashboard">
+                <h2 class="stats-title">📊 Tableau de bord des statistiques</h2>
+
+                <!-- Cartes de statistiques globales -->
+                <div class="stats-cards-grid">
+                    <div class="stat-card-large">
+                        <div class="stat-icon-large">📋</div>
+                        <div class="stat-value-large" id="total-distributions">0</div>
+                        <div class="stat-label-large">Distributions totales</div>
+                    </div>
+                    <div class="stat-card-large success">
+                        <div class="stat-icon-large">✅</div>
+                        <div class="stat-value-large" id="stats-effectue">0</div>
+                        <div class="stat-label-large">Effectués</div>
+                    </div>
+                    <div class="stat-card-large warning">
+                        <div class="stat-icon-large">🔄</div>
+                        <div class="stat-value-large" id="stats-repasser">0</div>
+                        <div class="stat-label-large">À repasser</div>
+                    </div>
+                    <div class="stat-card-large danger">
+                        <div class="stat-icon-large">❌</div>
+                        <div class="stat-value-large" id="stats-refus">0</div>
+                        <div class="stat-label-large">Refus</div>
+                    </div>
+                </div>
+
+                <!-- Graphiques -->
+                <div class="charts-grid">
+                    <!-- Répartition par status -->
+                    <div class="chart-container">
+                        <h3 class="chart-title">Répartition par status</h3>
+                        <canvas id="statusChart"></canvas>
+                    </div>
+
+                    <!-- Montants collectés -->
+                    <div class="chart-container">
+                        <h3 class="chart-title">Montants collectés</h3>
+                        <canvas id="amountChart"></canvas>
+                    </div>
+
+                    <!-- Moyens de paiement -->
+                    <div class="chart-container">
+                        <h3 class="chart-title">Moyens de paiement</h3>
+                        <canvas id="paymentChart"></canvas>
+                    </div>
+
+                    <!-- Évolution dans le temps -->
+                    <div class="chart-container chart-wide">
+                        <h3 class="chart-title">Évolution des distributions</h3>
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Statistiques détaillées -->
+                <div class="detailed-stats">
+                    <h3>Statistiques détaillées</h3>
+                    <div class="stats-table">
+                        <div class="stats-row">
+                            <span class="stats-label">💰 Montant moyen par distribution</span>
+                            <span class="stats-value" id="avg-amount">0.00 €</span>
+                        </div>
+                        <div class="stats-row">
+                            <span class="stats-label">📈 Taux de réussite</span>
+                            <span class="stats-value" id="success-rate">0%</span>
+                        </div>
+                        <div class="stats-row">
+                            <span class="stats-label">🔄 Taux à repasser</span>
+                            <span class="stats-value" id="repasser-rate">0%</span>
+                        </div>
+                        <div class="stats-row">
+                            <span class="stats-label">❌ Taux de refus</span>
+                            <span class="stats-value" id="refus-rate">0%</span>
+                        </div>
+                        <div class="stats-row">
+                            <span class="stats-label">💵 Part en espèces</span>
+                            <span class="stats-value" id="cash-percent">0%</span>
+                        </div>
+                        <div class="stats-row">
+                            <span class="stats-label">💳 Part en chèques</span>
+                            <span class="stats-value" id="check-percent">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglet Liste (nouveau) -->
+        <div id="list-tab" class="tab-content">
+            <div class="list-container">
+                <div class="list-header">
+                    <h2>Liste des Distributions</h2>
+                </div>
+
+                <!-- Recherche rapide -->
+                <div class="list-search">
+                    <input type="text" id="quick-search-input"
+                           placeholder="🔍 Rechercher une adresse..." autocomplete="off">
+                </div>
+
+                <!-- Filtres par date -->
+                <div class="list-date-filters">
+                    <div class="date-filter-group">
+                        <label for="date-from">Du :</label>
+                        <input type="date" id="date-from" class="date-input">
+                    </div>
+                    <div class="date-filter-group">
+                        <label for="date-to">Au :</label>
+                        <input type="date" id="date-to" class="date-input">
+                    </div>
+                    <button class="btn-reset-dates" id="reset-dates-btn" title="Réinitialiser les dates">↻</button>
+                </div>
+
+                <!-- Filtres par statut -->
+                <div class="list-filters">
+                    <button class="filter-btn active" data-filter="all">Toutes</button>
+                    <button class="filter-btn" data-filter="effectue">Effectué</button>
+                    <button class="filter-btn" data-filter="repasser">À repasser</button>
+                    <button class="filter-btn" data-filter="refus">Refus</button>
+                </div>
+
+                <div class="list-content" id="distributions-list">
+                    <p class="empty-state">Aucune distribution enregistrée</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="bottom-nav" id="bottom-nav">
+            <button class="bottom-nav-btn" id="add-distribution-btn-bottom" aria-label="Ajouter distribution">
+                <i data-lucide="plus-circle"></i>
+                <span>Ajouter</span>
+            </button>
+            <button class="bottom-nav-btn active" data-tab="map" aria-label="Carte">
+                <i data-lucide="map"></i>
+                <span>Carte</span>
+            </button>
+            <button class="bottom-nav-btn" data-tab="list" aria-label="Liste">
+                <i data-lucide="list"></i>
+                <span>Liste</span>
+            </button>
+            <button class="bottom-nav-btn" data-tab="stats" aria-label="Statistiques">
+                <i data-lucide="bar-chart-3"></i>
+                <span>Stats</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Modal formulaire distribution -->
+    <div id="distribution-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Ajouter une distribution</h2>
+                <button class="modal-close" id="close-modal-btn">&times;</button>
+            </div>
+            <form id="distribution-form">
+                <input type="hidden" id="distribution-id">
+
+                <!-- Toggle mode saisie -->
+                <div class="form-mode-toggle">
+                    <button type="button" class="mode-btn active" data-mode="auto">
+                        🔍 Recherche d'adresse
+                    </button>
+                    <button type="button" class="mode-btn" data-mode="manual">
+                        ✏️ Saisie manuelle
+                    </button>
+                </div>
+
+                <!-- Mode automatique -->
+                <div id="auto-mode" class="address-mode">
+                    <!-- Recherche de ville -->
+                    <div class="form-group">
+                        <label for="city-input" class="search-label">1. Sélectionnez votre ville/village</label>
+                        <div class="input-with-badge">
+                            <input
+                                type="text"
+                                id="city-input"
+                                placeholder="Rechercher une ville ou un village..."
+                                autocomplete="off"
+                            >
+                            <button type="button" id="detect-city-btn" class="detect-btn" title="Détecter ma ville actuelle">
+                                📍
+                            </button>
+                        </div>
+                        <div id="city-results" class="search-results"></div>
+                        <div id="selected-city" class="selected-city"></div>
+                    </div>
+
+                    <!-- Recherche d'adresse -->
+                    <div class="form-group">
+                        <label for="address-input" class="search-label">2. Recherchez une adresse *</label>
+                        <input
+                            type="text"
+                            id="address-input"
+                            placeholder="Entrez d'abord une ville..."
+                            autocomplete="off"
+                            required
+                            disabled
+                        >
+                        <div id="address-results" class="search-results"></div>
+                        <!-- Champs cachés pour les coordonnées -->
+                        <input type="hidden" id="dist-lat">
+                        <input type="hidden" id="dist-lng">
+                    </div>
+                </div>
+
+                <!-- Mode manuel -->
+                <div id="manual-mode" class="address-mode" style="display: none;">
+                    <div class="form-group">
+                        <label for="dist-address-manual">Adresse postale *</label>
+                        <input type="text" id="dist-address-manual" placeholder="Entrez l'adresse manuellement">
+                        <small class="form-hint">Exemple: 12 Rue Principale, 69001 Lyon</small>
+                    </div>
+
+                    <div class="manual-location-info">
+                        <p class="info-text">
+                            📍 <strong>Définir la position sur la carte</strong><br>
+                            <span id="click-map-instruction">Cliquez sur la carte pour placer le marqueur</span>
+                        </p>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dist-lat-manual">Latitude *</label>
+                            <input type="number" id="dist-lat-manual" step="0.000001" placeholder="45.764043" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dist-lng-manual">Longitude *</label>
+                            <input type="number" id="dist-lng-manual" step="0.000001" placeholder="4.835659" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dist-status">Status *</label>
+                        <select id="dist-status" required>
+                            <option value="effectue">✅ Effectué</option>
+                            <option value="repasser">🔄 À repasser</option>
+                            <option value="refus">❌ Refus</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dist-amount">Montant (€)</label>
+                        <input type="number" id="dist-amount" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="dist-payment">Moyen de règlement</label>
+                    <select id="dist-payment">
+                        <option value="">Non spécifié</option>
+                        <option value="espece">💵 Espèces</option>
+                        <option value="cheque">💳 Chèque</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dist-notes">Notes / Commentaires</label>
+                    <textarea id="dist-notes" rows="3" placeholder="Informations complémentaires..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-modal-btn">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+    <!-- Configuration NocoDB -->
+    <script src="nocodb-config.js"></script>
+
+    <!-- Custom JS -->
+    <script src="app.js"></script>
+</body>
+</html>
