@@ -152,9 +152,10 @@ class AuthManager {
 
     /**
      * Check if current user is admin
+     * Accepte à la fois les booléens (true) et les nombres (1) de NocoDB
      */
     isAdmin() {
-        return this.currentUser?.is_admin === true;
+        return this.currentUser?.is_admin === true || this.currentUser?.is_admin === 1;
     }
 
     /**
