@@ -18,7 +18,7 @@ if (USE_PROXY) {
     // Créer un objet NOCODB_CONFIG compatible pour le code existant
     window.NOCODB_CONFIG = {
         baseUrl: CONFIG.proxyUrl,
-        apiToken: null, // Le token est géré par le worker
+        apiToken: 'PROXY_MODE', // Valeur placeholder - le token réel est géré par le worker
         tables: CONFIG.tables,
         projectId: CONFIG.projectId,
 
