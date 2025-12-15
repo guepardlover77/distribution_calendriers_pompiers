@@ -258,7 +258,12 @@ class MapApplication {
         // User is logged in - proceed with normal initialization
         this.showMainApp();
         this.initMap();
-        this.initDrawControls();
+
+        // Délai pour s'assurer que tout est bien initialisé avant les contrôles de dessin
+        setTimeout(() => {
+            this.initDrawControls();
+        }, 100);
+
         this.initCitySearch();
         this.initAddressSearch();
         this.initDistributions();
@@ -355,7 +360,12 @@ class MapApplication {
 
             // Initialize the main application
             this.initMap();
-            this.initDrawControls();
+
+            // Délai pour s'assurer que tout est bien initialisé avant les contrôles de dessin
+            setTimeout(() => {
+                this.initDrawControls();
+            }, 100);
+
             this.initCitySearch();
             this.initAddressSearch();
             this.initDistributions();
