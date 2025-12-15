@@ -497,6 +497,14 @@ class MapApplication {
 
     // Initialisation des contrôles de dessin
     initDrawControls() {
+        // Vérifier si l'utilisateur est administrateur
+        if (!this.auth.isAdmin()) {
+            console.log('[ZONES] Contrôles de dessin désactivés pour utilisateur non-admin');
+            return;
+        }
+
+        console.log('[ZONES] Initialisation des contrôles de dessin pour admin');
+
         const drawControl = new L.Control.Draw({
             position: 'topright',
             draw: {
@@ -560,11 +568,15 @@ class MapApplication {
 
         this.map.on(L.Draw.Event.EDITED, (e) => {
             this.updateZonesFromLayers();
+            this.saveZones();
+            this.scheduleSyncWithNocoDB();
             this.notifyUser('Zones modifiées', 'info');
         });
 
         this.map.on(L.Draw.Event.DELETED, (e) => {
             this.updateZonesFromLayers();
+            this.saveZones();
+            this.scheduleSyncWithNocoDB();
             this.updateZonesCount();
             this.notifyUser('Zones supprimées', 'warning');
         });
@@ -1452,6 +1464,9 @@ class MapApplication {
 
         // Sauvegarder les zones (qui va mettre à jour this.zones avec le nom et la couleur)
         this.saveZones();
+
+        // Synchroniser avec NocoDB
+        this.scheduleSyncWithNocoDB();
 
         // Rafraîchir le filtre zone
         this.populateZoneFilter();
