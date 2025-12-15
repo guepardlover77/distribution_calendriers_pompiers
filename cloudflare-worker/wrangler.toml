@@ -1,0 +1,14 @@
+name = "nocodb-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Variables d'environnement (NON sensibles)
+# Les secrets (NOCODB_API_TOKEN) doivent être définis via: wrangler secret put NOCODB_API_TOKEN
+
+[vars]
+# Exemple - À modifier avec votre propre URL NocoDB
+# NOCODB_BASE_URL = "http://100.72.210.25:8080"
+
+# Note: Pour définir les secrets, utilisez la commande:
+# wrangler secret put NOCODB_API_TOKEN
+# wrangler secret put NOCODB_PROJECT_ID (optionnel)
