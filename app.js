@@ -498,6 +498,16 @@ class MapApplication {
     // Initialisation des contrôles de dessin
     initDrawControls() {
         // Vérifier si l'utilisateur est administrateur
+        // Debug: afficher l'état de l'authentification
+        console.log('[ZONES] Vérification admin - auth:', this.auth);
+        console.log('[ZONES] currentUser:', this.auth?.currentUser);
+        console.log('[ZONES] is_admin:', this.auth?.currentUser?.is_admin);
+
+        if (!this.auth || !this.auth.currentUser) {
+            console.log('[ZONES] Auth ou currentUser non défini, contrôles désactivés');
+            return;
+        }
+
         if (!this.auth.isAdmin()) {
             console.log('[ZONES] Contrôles de dessin désactivés pour utilisateur non-admin');
             return;
