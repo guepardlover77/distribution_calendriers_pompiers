@@ -209,6 +209,49 @@
                     <button class="filter-btn" data-filter="refus">Refus</button>
                 </div>
 
+                <!-- Panel filtres avancés -->
+                <div class="advanced-filters-panel">
+                    <div class="filters-header">
+                        <h3>Filtres avancés</h3>
+                        <span id="active-filters-badge" class="filter-badge">0</span>
+                        <button class="btn-clear-filters" id="clear-all-filters">Réinitialiser tout</button>
+                    </div>
+
+                    <div class="filters-grid">
+                        <!-- Filtre paiement -->
+                        <div class="filter-group">
+                            <label for="filter-payment">Moyen de paiement</label>
+                            <select id="filter-payment" class="filter-select">
+                                <option value="all">Tous</option>
+                                <option value="espece">💵 Espèces</option>
+                                <option value="cheque">💳 Chèque</option>
+                                <option value="unspecified">Non spécifié</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtre binôme -->
+                        <div class="filter-group">
+                            <label for="filter-binome">Binôme</label>
+                            <select id="filter-binome" class="filter-select">
+                                <option value="all">Tous</option>
+                                <!-- Rempli dynamiquement depuis NocoDB -->
+                            </select>
+                        </div>
+
+                        <!-- Filtre zone -->
+                        <div class="filter-group">
+                            <label for="filter-zone">Zone géographique</label>
+                            <select id="filter-zone" class="filter-select">
+                                <option value="">Toutes les zones</option>
+                                <!-- Rempli dynamiquement depuis zones array -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Affichage des filtres actifs -->
+                    <div id="active-filters-display" class="active-filters-display"></div>
+                </div>
+
                 <div class="list-content" id="distributions-list">
                     <p class="empty-state">Aucune distribution enregistrée</p>
                 </div>
@@ -353,6 +396,68 @@
 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancel-modal-btn">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal zone properties -->
+    <div id="zone-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="zone-modal-title">Propriétés de la zone</h2>
+                <button class="modal-close" id="close-zone-modal">&times;</button>
+            </div>
+            <form id="zone-form">
+                <div class="form-group">
+                    <label for="zone-name">Nom de la zone *</label>
+                    <input type="text" id="zone-name" required placeholder="Ex: Secteur Centre-Ville">
+                </div>
+
+                <div class="form-group">
+                    <label for="zone-color">Couleur</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="zone-color" value="#10b981">
+                        <div class="color-presets">
+                            <button type="button" class="color-preset" data-color="#10b981" style="background: #10b981;" title="Vert"></button>
+                            <button type="button" class="color-preset" data-color="#3b82f6" style="background: #3b82f6;" title="Bleu"></button>
+                            <button type="button" class="color-preset" data-color="#f59e0b" style="background: #f59e0b;" title="Orange"></button>
+                            <button type="button" class="color-preset" data-color="#ef4444" style="background: #ef4444;" title="Rouge"></button>
+                            <button type="button" class="color-preset" data-color="#8b5cf6" style="background: #8b5cf6;" title="Violet"></button>
+                            <button type="button" class="color-preset" data-color="#ec4899" style="background: #ec4899;" title="Rose"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="zone-stats-preview" id="zone-stats-preview">
+                    <h3>Statistiques de la zone</h3>
+                    <div class="stats-grid-mini">
+                        <div class="stat-mini">
+                            <span class="stat-mini-value" id="zone-stat-total">0</span>
+                            <span class="stat-mini-label">Distributions</span>
+                        </div>
+                        <div class="stat-mini success">
+                            <span class="stat-mini-value" id="zone-stat-effectue">0</span>
+                            <span class="stat-mini-label">Effectués</span>
+                        </div>
+                        <div class="stat-mini warning">
+                            <span class="stat-mini-value" id="zone-stat-repasser">0</span>
+                            <span class="stat-mini-label">À repasser</span>
+                        </div>
+                        <div class="stat-mini danger">
+                            <span class="stat-mini-value" id="zone-stat-refus">0</span>
+                            <span class="stat-mini-label">Refus</span>
+                        </div>
+                    </div>
+                    <div class="stat-mini-amount">
+                        <strong>Montant total:</strong>
+                        <span id="zone-stat-amount">0.00 €</span>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-zone-modal">Annuler</button>
                     <button type="submit" class="btn btn-primary">Enregistrer</button>
                 </div>
             </form>

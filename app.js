@@ -207,15 +207,27 @@ class MapApplication {
         this.citySearchTimeout = null;
         this.selectedResultIndex = -1;
         this.selectedCity = null;
+        this.lastSelectedCity = null; // Mémoriser la dernière ville pour la réutiliser
         this.distributions = [];
         this.distributionMarkers = {};
-        this.currentFilter = 'all';
         this.editingDistributionId = null;
 
-        // Nouveaux filtres
-        this.searchQuery = '';
-        this.dateFrom = null;
-        this.dateTo = null;
+        // Gestion des zones
+        this.nextZoneId = 1; // Compteur pour numérotation auto des zones
+        this.editingZoneLayer = null; // Zone en cours d'édition dans le modal
+
+        // Système de filtres unifié
+        this.filters = {
+            status: 'all',       // 'all' | 'effectue' | 'repasser' | 'refus'
+            searchQuery: '',     // Recherche texte
+            dateFrom: null,      // Date début
+            dateTo: null,        // Date fin
+            payment: 'all',      // 'all' | 'espece' | 'cheque' | 'unspecified'
+            binome: 'all',       // 'all' | username du binôme
+            zone: null           // null | zone ID
+        };
+        this.activeFiltersCount = 0; // Compteur de filtres actifs
+        this.filterDebounceTimeout = null; // Pour debounce de la recherche
         this.charts = {
             status: null,
             amount: null,
@@ -384,6 +396,7 @@ class MapApplication {
             this.distributions = [];
             this.zones = [];
             this.distributionMarkers = {};
+            this.lastSelectedCity = null; // Effacer la ville mémorisée lors du changement d'utilisateur/secteur
 
             // Reload page to reset everything
             window.location.reload();
@@ -538,13 +551,11 @@ class MapApplication {
             this.addLayerInfo(layer, type);
 
             this.drawnItems.addLayer(layer);
-            this.zones.push({
-                type: type,
-                data: layer.toGeoJSON()
-            });
+
+            // Ouvrir le modal pour configurer la nouvelle zone
+            this.showZoneModal(layer, false);
 
             this.updateZonesCount();
-            this.notifyUser('Zone ajoutée avec succès', 'success');
         });
 
         this.map.on(L.Draw.Event.EDITED, (e) => {
@@ -705,6 +716,9 @@ class MapApplication {
             citycode: cityCode
         };
 
+        // Mémoriser cette ville pour la réutiliser aux prochains ajouts
+        this.lastSelectedCity = { ...this.selectedCity };
+
         // Mettre à jour l'interface
         document.getElementById('city-input').value = cityName;
 
@@ -735,6 +749,7 @@ class MapApplication {
     // Effacer la ville sélectionnée
     clearCity() {
         this.selectedCity = null;
+        this.lastSelectedCity = null; // Effacer aussi la ville mémorisée
 
         document.getElementById('city-input').value = '';
         document.getElementById('selected-city').classList.remove('active');
@@ -1139,40 +1154,59 @@ class MapApplication {
         this.notifyUser(message, 'error');
     }
 
+    // Générer une couleur aléatoire pour une nouvelle zone
+    getRandomZoneColor() {
+        const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
     // Sauvegarder les zones dans le localStorage
     saveZones() {
         try {
             const zonesData = [];
+            let index = 0;
 
             this.drawnItems.eachLayer((layer) => {
                 const geoJSON = layer.toGeoJSON();
-                let layerData = {
-                    type: 'Feature',
-                    geometry: geoJSON.geometry,
-                    properties: {}
+                const existingZone = this.zones[index] || {};
+
+                // Créer l'objet zone avec métadonnées complètes
+                let zoneData = {
+                    id: existingZone.id || `zone-${Date.now()}-${index}`,
+                    name: existingZone.name || `Zone ${this.nextZoneId++}`,
+                    color: existingZone.color || this.getRandomZoneColor(),
+                    geojson: {
+                        type: 'Feature',
+                        geometry: geoJSON.geometry,
+                        properties: {}
+                    },
+                    createdAt: existingZone.createdAt || new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
                 };
 
                 // Ajouter les propriétés spécifiques pour les cercles
                 if (layer instanceof L.Circle) {
-                    layerData.properties.radius = layer.getRadius();
-                    layerData.properties.shapeType = 'circle';
+                    zoneData.geojson.properties.radius = layer.getRadius();
+                    zoneData.geojson.properties.shapeType = 'circle';
+                } else if (layer instanceof L.Polygon) {
+                    zoneData.geojson.properties.shapeType = 'polygon';
+                } else if (layer instanceof L.Rectangle) {
+                    zoneData.geojson.properties.shapeType = 'rectangle';
                 }
 
-                zonesData.push(layerData);
+                zonesData.push(zoneData);
+                index++;
             });
+
+            // Mettre à jour this.zones
+            this.zones = zonesData;
 
             // Sauvegarder dans localStorage
             localStorage.setItem('mapZones', JSON.stringify(zonesData));
 
-            // ✅ FIX: Mettre à jour this.zones pour la sync Google Sheets
-            this.zones = zonesData.map((zoneData, index) => ({
-                name: `Zone ${index + 1}`,
-                geojson: zoneData
-            }));
-
             this.notifyUser(`${zonesData.length} zone(s) sauvegardée(s)`, 'success');
 
-            // ✅ FIX: Planifier la synchronisation avec NocoDB
+            // Planifier la synchronisation avec NocoDB
             this.scheduleSyncWithNocoDB();
         } catch (error) {
             console.error('Erreur de sauvegarde:', error);
@@ -1248,6 +1282,9 @@ class MapApplication {
                 }));
 
                 this.updateZonesCount();
+
+                // Peupler le filtre zone après chargement
+                this.populateZoneFilter();
             }
         } catch (error) {
             console.error('Erreur de chargement:', error);
@@ -1286,6 +1323,147 @@ class MapApplication {
             zonesCountEl.textContent = count;
         }
     }
+
+    // ============================================
+    // GESTION DES ZONES - MODAL ET STATISTIQUES
+    // ============================================
+
+    /**
+     * Afficher le modal des propriétés de zone
+     * @param {L.Layer} layer - Le layer Leaflet dessiné
+     * @param {boolean} isEdit - True si édition, false si nouvelle zone
+     */
+    showZoneModal(layer, isEdit = false) {
+        const modal = document.getElementById('zone-modal');
+        const form = document.getElementById('zone-form');
+        const nameInput = document.getElementById('zone-name');
+        const colorInput = document.getElementById('zone-color');
+
+        // Stocker la référence du layer pour plus tard
+        this.editingZoneLayer = layer;
+
+        // Trouver l'index de la zone existante si édition
+        let zoneIndex = -1;
+        let currentIndex = 0;
+        this.drawnItems.eachLayer((l) => {
+            if (l === layer) zoneIndex = currentIndex;
+            currentIndex++;
+        });
+
+        const existingZone = this.zones[zoneIndex];
+
+        // Pré-remplir le formulaire
+        if (existingZone) {
+            nameInput.value = existingZone.name || '';
+            colorInput.value = existingZone.color || '#10b981';
+
+            // Appliquer la couleur au layer
+            if (layer.setStyle) {
+                layer.setStyle({
+                    color: existingZone.color,
+                    fillColor: existingZone.color
+                });
+            }
+        } else {
+            nameInput.value = '';
+            colorInput.value = '#10b981';
+        }
+
+        // Calculer et afficher les statistiques
+        this.updateZoneStatisticsPreview(layer);
+
+        // Afficher le modal
+        modal.classList.add('active');
+    }
+
+    /**
+     * Calculer les statistiques pour une zone
+     * @param {L.Layer} zoneLayer - Le layer de la zone
+     * @return {Object} - Objet contenant les statistiques
+     */
+    calculateZoneStatistics(zoneLayer) {
+        const distributionsInZone = this.getDistributionsInZone(zoneLayer);
+
+        const stats = {
+            totalDistributions: distributionsInZone.length,
+            effectue: distributionsInZone.filter(d => d.status === 'effectue').length,
+            repasser: distributionsInZone.filter(d => d.status === 'repasser').length,
+            refus: distributionsInZone.filter(d => d.status === 'refus').length,
+            totalAmount: distributionsInZone.reduce((sum, d) => sum + (d.amount || 0), 0),
+            successRate: 0
+        };
+
+        if (stats.totalDistributions > 0) {
+            stats.successRate = (stats.effectue / stats.totalDistributions * 100).toFixed(1);
+        }
+
+        return stats;
+    }
+
+    /**
+     * Mettre à jour l'affichage des statistiques dans le modal
+     * @param {L.Layer} zoneLayer - Le layer de la zone
+     */
+    updateZoneStatisticsPreview(zoneLayer) {
+        const stats = this.calculateZoneStatistics(zoneLayer);
+
+        document.getElementById('zone-stat-total').textContent = stats.totalDistributions;
+        document.getElementById('zone-stat-effectue').textContent = stats.effectue;
+        document.getElementById('zone-stat-repasser').textContent = stats.repasser;
+        document.getElementById('zone-stat-refus').textContent = stats.refus;
+        document.getElementById('zone-stat-amount').textContent = stats.totalAmount.toFixed(2) + ' €';
+    }
+
+    /**
+     * Gérer la soumission du formulaire de zone
+     * @param {Event} e - L'événement de soumission
+     */
+    handleZoneFormSubmit(e) {
+        e.preventDefault();
+
+        const name = document.getElementById('zone-name').value.trim();
+        const color = document.getElementById('zone-color').value;
+        const layer = this.editingZoneLayer;
+
+        if (!name) {
+            this.notifyUser('Veuillez entrer un nom pour la zone', 'warning');
+            return;
+        }
+
+        if (!layer) {
+            this.notifyUser('Erreur: aucune zone sélectionnée', 'error');
+            return;
+        }
+
+        // Mettre à jour le style du layer avec la nouvelle couleur
+        if (layer.setStyle) {
+            layer.setStyle({
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.2
+            });
+        } else if (layer instanceof L.Circle) {
+            layer.setStyle({
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.2
+            });
+        }
+
+        // Sauvegarder les zones (qui va mettre à jour this.zones avec le nom et la couleur)
+        this.saveZones();
+
+        // Rafraîchir le filtre zone
+        this.populateZoneFilter();
+
+        // Fermer le modal
+        document.getElementById('zone-modal').classList.remove('active');
+        this.editingZoneLayer = null;
+
+        this.notifyUser(`Zone "${name}" enregistrée`, 'success');
+    }
+
+    // ============================================
 
     // Notification utilisateur
     notifyUser(message, type = 'info') {
@@ -1350,23 +1528,26 @@ class MapApplication {
             });
         });
 
-        // Filtres par statut
+        // Filtres par statut (mis à jour pour système unifié)
         const filterBtns = document.querySelectorAll('.filter-btn');
         filterBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 filterBtns.forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
-                this.currentFilter = e.target.dataset.filter;
-                this.renderDistributionsList();
+                this.filters.status = e.target.dataset.filter;
+                this.updateFilteredView();
             });
         });
 
-        // Recherche rapide
+        // Recherche rapide avec debounce
         const quickSearchInput = document.getElementById('quick-search-input');
         if (quickSearchInput) {
             quickSearchInput.addEventListener('input', (e) => {
-                this.searchQuery = e.target.value.toLowerCase();
-                this.renderDistributionsList();
+                clearTimeout(this.filterDebounceTimeout);
+                this.filterDebounceTimeout = setTimeout(() => {
+                    this.filters.searchQuery = e.target.value.toLowerCase();
+                    this.updateFilteredView();
+                }, 300);
             });
         }
 
@@ -1377,28 +1558,61 @@ class MapApplication {
 
         if (dateFrom) {
             dateFrom.addEventListener('change', (e) => {
-                this.dateFrom = e.target.value ? new Date(e.target.value) : null;
-                this.renderDistributionsList();
-                this.updateStatsDashboard(); // Mettre à jour les stats avec les filtres
+                this.filters.dateFrom = e.target.value ? new Date(e.target.value) : null;
+                this.updateFilteredView();
+                this.updateStatsDashboard();
             });
         }
 
         if (dateTo) {
             dateTo.addEventListener('change', (e) => {
-                this.dateTo = e.target.value ? new Date(e.target.value + 'T23:59:59') : null;
-                this.renderDistributionsList();
-                this.updateStatsDashboard(); // Mettre à jour les stats avec les filtres
+                this.filters.dateTo = e.target.value ? new Date(e.target.value + 'T23:59:59') : null;
+                this.updateFilteredView();
+                this.updateStatsDashboard();
             });
         }
 
         if (resetDatesBtn) {
             resetDatesBtn.addEventListener('click', () => {
-                this.dateFrom = null;
-                this.dateTo = null;
+                this.filters.dateFrom = null;
+                this.filters.dateTo = null;
                 if (dateFrom) dateFrom.value = '';
                 if (dateTo) dateTo.value = '';
-                this.renderDistributionsList();
-                this.updateStatsDashboard(); // Mettre à jour les stats
+                this.updateFilteredView();
+                this.updateStatsDashboard();
+            });
+        }
+
+        // Nouveaux filtres avancés
+        const filterPayment = document.getElementById('filter-payment');
+        const filterBinome = document.getElementById('filter-binome');
+        const filterZone = document.getElementById('filter-zone');
+        const clearAllFiltersBtn = document.getElementById('clear-all-filters');
+
+        if (filterPayment) {
+            filterPayment.addEventListener('change', (e) => {
+                this.filters.payment = e.target.value;
+                this.updateFilteredView();
+            });
+        }
+
+        if (filterBinome) {
+            filterBinome.addEventListener('change', (e) => {
+                this.filters.binome = e.target.value;
+                this.updateFilteredView();
+            });
+        }
+
+        if (filterZone) {
+            filterZone.addEventListener('change', (e) => {
+                this.filters.zone = e.target.value || null;
+                this.updateFilteredView();
+            });
+        }
+
+        if (clearAllFiltersBtn) {
+            clearAllFiltersBtn.addEventListener('click', () => {
+                this.clearAllFilters();
             });
         }
 
@@ -1576,6 +1790,32 @@ class MapApplication {
                 addressInput.value = savedAddress;
                 document.getElementById('dist-lat').value = savedLat;
                 document.getElementById('dist-lng').value = savedLng;
+            }
+
+            // Restaurer la ville mémorisée si elle existe
+            if (this.lastSelectedCity) {
+                this.selectedCity = { ...this.lastSelectedCity };
+
+                // Mettre à jour l'interface de la ville
+                const cityInput = document.getElementById('city-input');
+                cityInput.value = this.lastSelectedCity.name;
+
+                // Afficher la ville sélectionnée
+                const selectedCityDiv = document.getElementById('selected-city');
+                selectedCityDiv.innerHTML = `
+                    <span class="selected-city-name">📍 ${this.lastSelectedCity.name}</span>
+                    <button class="clear-city-btn" id="clear-city-btn">✕</button>
+                `;
+                selectedCityDiv.classList.add('active');
+
+                // Attacher l'event listener au bouton clear-city
+                document.getElementById('clear-city-btn').addEventListener('click', () => {
+                    this.clearCity();
+                });
+
+                // Activer le champ de recherche d'adresse
+                addressInput.disabled = false;
+                addressInput.placeholder = `Rechercher une adresse à ${this.lastSelectedCity.name.split(',')[0]}...`;
             }
         }
 
@@ -1755,6 +1995,9 @@ class MapApplication {
                 this.updateStatistics();
                 this.renderDistributionsList();
                 this.centerMapOnLastDistribution();
+
+                // Peupler le filtre binôme après chargement
+                this.populateBinomeFilter();
             }
         } catch (error) {
             console.error('Erreur de chargement des distributions:', error);
@@ -1792,6 +2035,8 @@ class MapApplication {
     saveDistributionsToStorage() {
         try {
             localStorage.setItem('distributions', JSON.stringify(this.distributions));
+            // Rafraîchir le filtre binôme après sauvegarde
+            this.populateBinomeFilter();
         } catch (error) {
             console.error('Erreur de sauvegarde des distributions:', error);
             this.notifyUser('Erreur lors de la sauvegarde', 'error');
@@ -2519,6 +2764,380 @@ class MapApplication {
         };
     }
 
+    // ============================================
+    // UTILITAIRES GÉOSPATIAUX
+    // ============================================
+
+    /**
+     * Vérifie si un point est à l'intérieur d'une zone
+     * @param {Object} point - {lat, lng}
+     * @param {L.Layer} zoneLayer - Leaflet layer (polygon, circle, rectangle)
+     * @return {boolean}
+     */
+    isPointInZone(point, zoneLayer) {
+        if (zoneLayer instanceof L.Circle) {
+            const center = zoneLayer.getLatLng();
+            const radius = zoneLayer.getRadius();
+            const distance = this.map.distance([point.lat, point.lng], center);
+            return distance <= radius;
+        } else if (zoneLayer instanceof L.Polygon || zoneLayer instanceof L.Rectangle) {
+            // Utiliser le ray casting algorithm pour les polygones
+            const latLng = L.latLng(point.lat, point.lng);
+            const bounds = zoneLayer.getBounds();
+
+            // Vérification rapide avec bounding box
+            if (!bounds.contains(latLng)) return false;
+
+            // Ray casting pour détection précise
+            return this.raycastPointInPolygon(latLng, zoneLayer.getLatLngs()[0]);
+        }
+        return false;
+    }
+
+    /**
+     * Algorithme de ray casting pour déterminer si un point est dans un polygone
+     * @param {L.LatLng} point - Point à tester
+     * @param {Array} polygon - Array de L.LatLng représentant le polygone
+     * @return {boolean}
+     */
+    raycastPointInPolygon(point, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].lat, yi = polygon[i].lng;
+            const xj = polygon[j].lat, yj = polygon[j].lng;
+
+            const intersect = ((yi > point.lng) !== (yj > point.lng))
+                && (point.lat < (xj - xi) * (point.lng - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    /**
+     * Récupère toutes les distributions dans une zone donnée
+     * @param {L.Layer} zoneLayer - La zone Leaflet
+     * @return {Array} - Array des distributions dans la zone
+     */
+    getDistributionsInZone(zoneLayer) {
+        return this.distributions.filter(dist =>
+            this.isPointInZone({lat: dist.lat, lng: dist.lng}, zoneLayer)
+        );
+    }
+
+    // ============================================
+    // SYSTÈME DE FILTRAGE MULTI-CRITÈRES
+    // ============================================
+
+    /**
+     * Appliquer tous les filtres actifs aux distributions
+     * @return {Array} - Array des distributions filtrées
+     */
+    applyAllFilters() {
+        let filtered = [...this.distributions];
+
+        // Filtre par statut
+        if (this.filters.status !== 'all') {
+            filtered = filtered.filter(d => d.status === this.filters.status);
+        }
+
+        // Filtre par recherche texte
+        if (this.filters.searchQuery) {
+            const query = this.filters.searchQuery.toLowerCase();
+            filtered = filtered.filter(d =>
+                d.address.toLowerCase().includes(query) ||
+                (d.notes && d.notes.toLowerCase().includes(query))
+            );
+        }
+
+        // Filtre par plage de dates
+        if (this.filters.dateFrom || this.filters.dateTo) {
+            filtered = filtered.filter(d => {
+                const distDate = new Date(d.createdAt || d.updatedAt);
+                if (this.filters.dateFrom && distDate < this.filters.dateFrom) return false;
+                if (this.filters.dateTo && distDate > this.filters.dateTo) return false;
+                return true;
+            });
+        }
+
+        // Filtre par moyen de paiement
+        if (this.filters.payment !== 'all') {
+            if (this.filters.payment === 'unspecified') {
+                filtered = filtered.filter(d => !d.payment || d.payment === '');
+            } else {
+                filtered = filtered.filter(d => d.payment === this.filters.payment);
+            }
+        }
+
+        // Filtre par binôme
+        if (this.filters.binome !== 'all') {
+            filtered = filtered.filter(d => d.binome_id === this.filters.binome);
+        }
+
+        // Filtre par zone géographique
+        if (this.filters.zone !== null) {
+            const zone = this.zones.find(z => z.id === this.filters.zone);
+            if (zone) {
+                // Trouver le layer correspondant
+                let zoneLayer = null;
+                let index = 0;
+                this.drawnItems.eachLayer((layer) => {
+                    if (this.zones[index]?.id === this.filters.zone) {
+                        zoneLayer = layer;
+                    }
+                    index++;
+                });
+
+                if (zoneLayer) {
+                    filtered = filtered.filter(d =>
+                        this.isPointInZone({lat: d.lat, lng: d.lng}, zoneLayer)
+                    );
+                }
+            }
+        }
+
+        return filtered;
+    }
+
+    /**
+     * Mettre à jour la vue filtrée (liste ET carte)
+     */
+    updateFilteredView() {
+        const filtered = this.applyAllFilters();
+
+        // Mettre à jour la liste
+        this.renderFilteredList(filtered);
+
+        // Mettre à jour les marqueurs sur la carte
+        this.updateFilteredMarkers(filtered);
+
+        // Mettre à jour le compteur de filtres actifs
+        this.updateActiveFiltersCount();
+    }
+
+    /**
+     * Afficher la liste filtrée
+     * @param {Array} filtered - Distributions filtrées
+     */
+    renderFilteredList(filtered) {
+        const container = document.getElementById('distributions-list');
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<p class="empty-state">Aucune distribution trouvée</p>';
+            return;
+        }
+
+        const statusLabels = {
+            effectue: '✅ Effectué',
+            repasser: '🔄 À repasser',
+            refus: '❌ Refus'
+        };
+
+        const paymentLabels = {
+            espece: '💵 Espèces',
+            cheque: '💳 Chèque'
+        };
+
+        container.innerHTML = filtered.map(dist => `
+            <div class="distribution-item status-${dist.status}" data-id="${dist.id}">
+                <div class="dist-address">${dist.address}</div>
+                <div class="dist-info">
+                    <span class="dist-status ${dist.status}">${statusLabels[dist.status]}</span>
+                    ${dist.amount > 0 ? `<span><strong>${dist.amount.toFixed(2)} €</strong></span>` : ''}
+                    ${dist.payment ? `<span>${paymentLabels[dist.payment]}</span>` : ''}
+                </div>
+                ${dist.notes ? `<div style="font-size: 12px; color: #6b7280; margin-top: 5px;">${dist.notes}</div>` : ''}
+                <div class="dist-actions">
+                    <button class="btn-edit" onclick="app.openDistributionModal('${dist.id}')">Modifier</button>
+                    <button class="btn-delete" onclick="app.deleteDistribution('${dist.id}')">Supprimer</button>
+                </div>
+            </div>
+        `).join('');
+
+        // Ajouter les event listeners pour centrer sur la carte au click
+        container.querySelectorAll('.distribution-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('btn-edit') && !e.target.classList.contains('btn-delete')) {
+                    const id = item.dataset.id;
+                    const dist = this.distributions.find(d => d.id === id);
+                    if (dist) {
+                        // Switcher vers l'onglet carte
+                        document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                            if (btn.dataset.tab === 'map') {
+                                btn.classList.add('active');
+                            }
+                        });
+                        document.querySelectorAll('.tab-content').forEach(tab => {
+                            tab.classList.remove('active');
+                        });
+                        document.getElementById('map-tab').classList.add('active');
+
+                        // Centrer sur la distribution
+                        this.map.setView([dist.lat, dist.lng], 18);
+                        if (this.distributionMarkers[id]) {
+                            this.distributionMarkers[id].openPopup();
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    /**
+     * Mettre à jour les marqueurs sur la carte (opacité selon filtre)
+     * @param {Array} filtered - Distributions filtrées
+     */
+    updateFilteredMarkers(filtered) {
+        const filteredIds = new Set(filtered.map(d => d.id));
+
+        // Parcourir tous les marqueurs
+        Object.keys(this.distributionMarkers).forEach(id => {
+            const marker = this.distributionMarkers[id];
+            if (marker) {
+                if (filteredIds.has(id)) {
+                    marker.setOpacity(1); // Visible
+                } else {
+                    marker.setOpacity(0.2); // Dim (grisé)
+                }
+            }
+        });
+    }
+
+    /**
+     * Calculer et afficher le nombre de filtres actifs
+     */
+    updateActiveFiltersCount() {
+        let count = 0;
+
+        if (this.filters.status !== 'all') count++;
+        if (this.filters.searchQuery) count++;
+        if (this.filters.dateFrom || this.filters.dateTo) count++;
+        if (this.filters.payment !== 'all') count++;
+        if (this.filters.binome !== 'all') count++;
+        if (this.filters.zone !== null) count++;
+
+        this.activeFiltersCount = count;
+
+        // Mettre à jour le badge UI
+        const badge = document.getElementById('active-filters-badge');
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Réinitialiser tous les filtres
+     */
+    clearAllFilters() {
+        this.filters = {
+            status: 'all',
+            searchQuery: '',
+            dateFrom: null,
+            dateTo: null,
+            payment: 'all',
+            binome: 'all',
+            zone: null
+        };
+
+        // Réinitialiser l'UI
+        const paymentSelect = document.getElementById('filter-payment');
+        if (paymentSelect) paymentSelect.value = 'all';
+
+        const binomeSelect = document.getElementById('filter-binome');
+        if (binomeSelect) binomeSelect.value = 'all';
+
+        const zoneSelect = document.getElementById('filter-zone');
+        if (zoneSelect) zoneSelect.value = '';
+
+        const searchInput = document.getElementById('quick-search-input');
+        if (searchInput) searchInput.value = '';
+
+        const dateFrom = document.getElementById('date-from');
+        if (dateFrom) dateFrom.value = '';
+
+        const dateTo = document.getElementById('date-to');
+        if (dateTo) dateTo.value = '';
+
+        // Réinitialiser les boutons de statut
+        document.querySelectorAll('[data-filter-type="status"]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filterValue === 'all');
+        });
+
+        this.updateFilteredView();
+        this.notifyUser('Filtres réinitialisés', 'info');
+    }
+
+    /**
+     * Peupler le filtre binôme avec les valeurs uniques depuis les distributions
+     */
+    populateBinomeFilter() {
+        const binomeSelect = document.getElementById('filter-binome');
+        if (!binomeSelect) return;
+
+        // Récupérer les binômes uniques
+        const uniqueBinomes = [...new Set(
+            this.distributions
+                .map(d => d.binome)
+                .filter(b => b && b.trim() !== '')
+        )].sort();
+
+        // Vider les options existantes (sauf "Tous")
+        binomeSelect.innerHTML = '<option value="all">Tous</option>';
+
+        // Ajouter les binômes
+        uniqueBinomes.forEach(binome => {
+            const option = document.createElement('option');
+            option.value = binome;
+            option.textContent = binome;
+            binomeSelect.appendChild(option);
+        });
+
+        console.log(`${uniqueBinomes.length} binôme(s) chargé(s) dans le filtre`);
+    }
+
+    /**
+     * Peupler le filtre zone avec les zones existantes
+     */
+    populateZoneFilter() {
+        const zoneSelect = document.getElementById('filter-zone');
+        if (!zoneSelect) return;
+
+        // Vider les options existantes (sauf "Toutes les zones")
+        zoneSelect.innerHTML = '<option value="">Toutes les zones</option>';
+
+        // Parcourir les zones dessinées
+        this.drawnItems.eachLayer(layer => {
+            const zoneId = layer._leaflet_id;
+            let zoneName = `Zone ${zoneId}`;
+            let zoneColor = '#10b981';
+
+            // Chercher les métadonnées dans localStorage
+            const savedZones = JSON.parse(localStorage.getItem('zones') || '[]');
+            const savedZone = savedZones.find(z => z.id === `zone-${zoneId}`);
+            if (savedZone) {
+                zoneName = savedZone.name || zoneName;
+                zoneColor = savedZone.color || zoneColor;
+            }
+
+            const option = document.createElement('option');
+            option.value = zoneId;
+            option.textContent = zoneName;
+            option.style.color = zoneColor;
+            zoneSelect.appendChild(option);
+        });
+
+        console.log(`${this.drawnItems.getLayers().length} zone(s) chargée(s) dans le filtre`);
+    }
+
+    // ============================================
+    // INITIALISATION
+    // ============================================
+
     // Initialiser les écouteurs d'événements
     initEventListeners() {
         // Bouton Ajouter dans la bottom nav
@@ -2544,6 +3163,53 @@ class MapApplication {
                 this.closeDistributionModal();
             }
         });
+
+        // ============================================
+        // EVENT LISTENERS MODAL ZONE
+        // ============================================
+
+        // Soumettre le formulaire de zone
+        const zoneForm = document.getElementById('zone-form');
+        if (zoneForm) {
+            zoneForm.addEventListener('submit', (e) => this.handleZoneFormSubmit(e));
+        }
+
+        // Fermer le modal zone
+        const closeZoneModal = document.getElementById('close-zone-modal');
+        if (closeZoneModal) {
+            closeZoneModal.addEventListener('click', () => {
+                document.getElementById('zone-modal').classList.remove('active');
+                this.editingZoneLayer = null;
+            });
+        }
+
+        // Annuler le modal zone
+        const cancelZoneModal = document.getElementById('cancel-zone-modal');
+        if (cancelZoneModal) {
+            cancelZoneModal.addEventListener('click', () => {
+                document.getElementById('zone-modal').classList.remove('active');
+                this.editingZoneLayer = null;
+            });
+        }
+
+        // Boutons de preset de couleur
+        document.querySelectorAll('.color-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const color = btn.dataset.color;
+                document.getElementById('zone-color').value = color;
+            });
+        });
+
+        // Fermer le modal zone en cliquant à l'extérieur
+        const zoneModal = document.getElementById('zone-modal');
+        if (zoneModal) {
+            zoneModal.addEventListener('click', (e) => {
+                if (e.target.id === 'zone-modal') {
+                    zoneModal.classList.remove('active');
+                    this.editingZoneLayer = null;
+                }
+            });
+        }
     }
 
     /**
