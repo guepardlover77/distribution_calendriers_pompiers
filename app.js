@@ -3711,7 +3711,12 @@ class MapApplication {
             }
 
             // Write zones
+            console.log('[ZONES SYNC] zonesTable:', zonesTable);
+            console.log('[ZONES SYNC] this.zones:', this.zones);
+            console.log('[ZONES SYNC] zones count:', this.zones.length);
+
             if (zonesTable) {
+                console.log('[ZONES SYNC] Writing zones to NocoDB...');
                 // Get existing records
                 const existingZonesResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${zonesTable.title}`, {
                     method: 'GET',
@@ -3737,20 +3742,36 @@ class MapApplication {
                 }
 
                 // Insert new zones
+                console.log('[ZONES SYNC] Inserting', this.zones.length, 'zones...');
                 for (let i = 0; i < this.zones.length; i++) {
                     const zone = this.zones[i];
-                    await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${zonesTable.title}`, {
+                    console.log('[ZONES SYNC] Zone', i, ':', zone);
+
+                    const payload = {
+                        name: zone.name || `Zone ${i + 1}`,
+                        geojson: JSON.stringify(zone.geojson),
+                        color: zone.color || '#10b981'
+                    };
+                    console.log('[ZONES SYNC] Payload:', payload);
+
+                    const response = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${zonesTable.title}`, {
                         method: 'POST',
                         headers: {
                             'xc-token': apiToken,
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            name: zone.name || `Zone ${i + 1}`,
-                            geojson: JSON.stringify(zone.geojson)
-                        })
+                        body: JSON.stringify(payload)
                     });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('[ZONES SYNC] ✓ Zone inserted:', result);
+                    } else {
+                        const error = await response.text();
+                        console.error('[ZONES SYNC] ✗ Failed to insert zone:', error);
+                    }
                 }
+                console.log('[ZONES SYNC] All zones written successfully');
             }
 
             console.log('Written to NocoDB successfully');
