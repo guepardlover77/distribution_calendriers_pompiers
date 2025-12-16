@@ -3910,10 +3910,16 @@ class MapApplication {
 
         // Merge zones
         if (nocoDBData.zones && nocoDBData.zones.length > 0) {
-            this.drawnItems.clearLayers();
-            this.zones = [];
+            // Only merge zones if we don't have local zones already
+            // (to avoid overwriting zones that were just created)
+            const hasLocalZones = this.drawnItems.getLayers().length > 0;
 
-            nocoDBData.zones.forEach(zoneData => {
+            if (!hasLocalZones) {
+                console.log('[MERGE ZONES] Loading zones from NocoDB');
+                this.drawnItems.clearLayers();
+                this.zones = [];
+
+                nocoDBData.zones.forEach(zoneData => {
                 // Parse GeoJSON if it's a string
                 const geojson = typeof zoneData.geojson === 'string'
                     ? JSON.parse(zoneData.geojson)
@@ -3937,9 +3943,9 @@ class MapApplication {
                     name: zoneData.name,
                     geojson: geojson
                 });
-            });
+                });
 
-            this.updateZonesCount();
+                this.updateZonesCount();
 
             // Sauvegarder dans localStorage SANS déclencher de nouvelle sync
             // (on est déjà en train de synchroniser !)
@@ -3958,9 +3964,13 @@ class MapApplication {
                     }
                     zonesData.push(layerData);
                 });
-                localStorage.setItem('mapZones', JSON.stringify(zonesData));
-            } catch (error) {
-                console.error('Erreur de sauvegarde locale des zones:', error);
+                    localStorage.setItem('mapZones', JSON.stringify(zonesData));
+                } catch (error) {
+                    console.error('Erreur de sauvegarde locale des zones:', error);
+                }
+            } else {
+                // Local zones exist, keep them and don't overwrite
+                console.log('[MERGE ZONES] Local zones exist, keeping them');
             }
         }
     }
