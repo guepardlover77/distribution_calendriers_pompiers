@@ -115,12 +115,14 @@ class AuthManager {
             );
 
             // Store session
+            // Ensure is_admin is properly converted to boolean (handles "0", "1", 0, 1, true, false)
+            const isAdmin = user.is_admin === true || user.is_admin === 1 || user.is_admin === '1';
             this.currentUser = {
                 id: nocoId,
                 username: user.username,
                 binome_name: user.binome_name,
                 assigned_zone: user.assigned_zone,
-                is_admin: user.is_admin || false
+                is_admin: isAdmin
             };
 
             sessionStorage.setItem(this.sessionKey, JSON.stringify(this.currentUser));
@@ -1295,55 +1297,75 @@ class MapApplication {
                     console.log(`[ZONES FILTER] Admin: ${allZones.length} zone(s) chargée(s)`);
                 }
 
-                zonesToLoad.forEach((zoneData) => {
+                // Vider les layers existants pour éviter les doublons
+                this.drawnItems.clearLayers();
+                this.zones = [];
+
+                zonesToLoad.forEach((zoneData, index) => {
                     let layer;
 
-                    if (zoneData.properties.shapeType === 'circle') {
-                        const coords = zoneData.geometry.coordinates;
-                        layer = L.circle([coords[1], coords[0]], {
-                            radius: zoneData.properties.radius,
-                            color: '#10b981',
-                            weight: 3,
-                            fillOpacity: 0.2,
-                            interactive: false
-                        });
-                        this.addLayerInfo(layer, 'circle');
+                    // Support des deux formats: ancien (properties/geometry) et nouveau (geojson.properties/geometry)
+                    const geojson = zoneData.geojson || zoneData;
+                    const properties = geojson.properties || {};
+                    const geometry = geojson.geometry || {};
+                    const zoneColor = zoneData.color || '#10b981';
+
+                    if (properties.shapeType === 'circle') {
+                        const coords = geometry.coordinates;
+                        if (coords && coords.length >= 2) {
+                            layer = L.circle([coords[1], coords[0]], {
+                                radius: properties.radius || 100,
+                                color: zoneColor,
+                                fillColor: zoneColor,
+                                weight: 3,
+                                fillOpacity: 0.2,
+                                interactive: false
+                            });
+                            this.addLayerInfo(layer, 'circle');
+                            this.drawnItems.addLayer(layer);
+                        }
                     } else {
-                        layer = L.geoJSON(zoneData, {
-                            style: (feature) => {
-                                return {
-                                    color: '#3b82f6',
-                                    weight: 3,
-                                    fillOpacity: 0.2
-                                };
-                            },
+                        // Pour les polygones et autres formes GeoJSON
+                        const geoJSONData = zoneData.geojson || zoneData;
+                        layer = L.geoJSON(geoJSONData, {
+                            style: () => ({
+                                color: zoneColor,
+                                fillColor: zoneColor,
+                                weight: 3,
+                                fillOpacity: 0.2
+                            }),
                             interactive: false
                         });
 
                         // Pour les GeoJSON, on doit extraire la couche
                         layer.eachLayer((l) => {
-                            this.addLayerInfo(l, 'polygon');
+                            this.addLayerInfo(l, properties.shapeType || 'polygon');
                             this.drawnItems.addLayer(l);
                         });
-                        return; // Éviter le double ajout
                     }
 
-                    this.drawnItems.addLayer(layer);
+                    // Préserver toutes les métadonnées de la zone
+                    this.zones.push({
+                        id: zoneData.id || `zone-${Date.now()}-${index}`,
+                        name: zoneData.name || `Zone ${index + 1}`,
+                        color: zoneColor,
+                        binome_username: zoneData.binome_username || null,
+                        binome_name: zoneData.binome_name || null,
+                        geojson: geojson,
+                        createdAt: zoneData.createdAt || new Date().toISOString(),
+                        updatedAt: zoneData.updatedAt || new Date().toISOString()
+                    });
                 });
-
-                // ✅ FIX: Mettre à jour this.zones après le chargement
-                this.zones = zonesToLoad.map((zoneData, index) => ({
-                    name: `Zone ${index + 1}`,
-                    geojson: zoneData
-                }));
 
                 this.updateZonesCount();
 
                 // Peupler le filtre zone après chargement
                 this.populateZoneFilter();
+
+                console.log(`[ZONES] Loaded ${this.zones.length} zone(s) from localStorage with metadata`);
             }
         } catch (error) {
-            console.error('Erreur de chargement:', error);
+            console.error('Erreur de chargement des zones:', error);
         }
     }
 
@@ -3521,8 +3543,8 @@ class MapApplication {
                 return;
             }
 
-            // Fetch all binômes
-            const binomesResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}`, {
+            // Fetch all binômes (with limit to avoid default 25 records limit)
+            const binomesResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}?limit=1000`, {
                 method: 'GET',
                 headers: { 'xc-token': apiToken }
             });
@@ -3647,9 +3669,9 @@ class MapApplication {
                 zones: []
             };
 
-            // Read distributions
+            // Read distributions (with pagination limit to avoid default 25 records limit)
             if (distributionsTable) {
-                const distResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${distributionsTable.title}`, {
+                const distResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${distributionsTable.title}?limit=1000`, {
                     method: 'GET',
                     headers: {
                         'xc-token': apiToken
@@ -3658,7 +3680,7 @@ class MapApplication {
 
                 if (distResponse.ok) {
                     const distData = await distResponse.json();
-                    let allDistributions = distData.list || distData.pageInfo?.totalRows > 0 ? distData.list : [];
+                    let allDistributions = distData.list || [];
 
                     // Filter based on user permissions
                     if (this.auth.isAdmin()) {
@@ -3672,9 +3694,9 @@ class MapApplication {
                 }
             }
 
-            // Read zones
+            // Read zones (with pagination limit to avoid default 25 records limit)
             if (zonesTable) {
-                const zonesResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${zonesTable.title}`, {
+                const zonesResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${zonesTable.title}?limit=1000`, {
                     method: 'GET',
                     headers: {
                         'xc-token': apiToken
@@ -3683,7 +3705,7 @@ class MapApplication {
 
                 if (zonesResponse.ok) {
                     const zonesData = await zonesResponse.json();
-                    let allZones = zonesData.list || zonesData.pageInfo?.totalRows > 0 ? zonesData.list : [];
+                    let allZones = zonesData.list || [];
 
                     // Filter based on user permissions (zones don't have direct filtering in current implementation)
                     // For now, load all zones and let client-side filtering handle it
@@ -3907,8 +3929,8 @@ class MapApplication {
 
             if (zonesTable) {
                 console.log('[ZONES SYNC] Writing zones to NocoDB...');
-                // Get existing records
-                const existingZonesResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${zonesTable.title}`, {
+                // Get existing records (with limit to ensure all zones are retrieved)
+                const existingZonesResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${zonesTable.title}?limit=1000`, {
                     method: 'GET',
                     headers: {
                         'xc-token': apiToken
@@ -4158,25 +4180,13 @@ class MapApplication {
 
             // Sauvegarder dans localStorage SANS déclencher de nouvelle sync
             // (on est déjà en train de synchroniser !)
+            // Utiliser this.zones qui contient toutes les métadonnées
             try {
-                const zonesData = [];
-                this.drawnItems.eachLayer((layer) => {
-                    const geoJSON = layer.toGeoJSON();
-                    let layerData = {
-                        type: 'Feature',
-                        geometry: geoJSON.geometry,
-                        properties: {}
-                    };
-                    if (layer instanceof L.Circle) {
-                        layerData.properties.radius = layer.getRadius();
-                        layerData.properties.shapeType = 'circle';
-                    }
-                    zonesData.push(layerData);
-                });
-                    localStorage.setItem('mapZones', JSON.stringify(zonesData));
-                } catch (error) {
-                    console.error('Erreur de sauvegarde locale des zones:', error);
-                }
+                localStorage.setItem('mapZones', JSON.stringify(this.zones));
+                console.log(`[MERGE ZONES] Saved ${this.zones.length} zone(s) to localStorage with metadata`);
+            } catch (error) {
+                console.error('Erreur de sauvegarde locale des zones:', error);
+            }
             } else {
                 // Local zones exist, keep them and don't overwrite
                 console.log('[MERGE ZONES] Local zones exist, keeping them');
@@ -4438,7 +4448,7 @@ class MapApplication {
             if (this.editingBinome) {
                 // Update existing binôme
                 // First, find the NocoDB ID
-                const existingResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}?where=(username,eq,${username})`, {
+                const existingResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}?where=(username,eq,${encodeURIComponent(username)})`, {
                     method: 'GET',
                     headers: { 'xc-token': apiToken }
                 });
@@ -4525,7 +4535,7 @@ class MapApplication {
             }
 
             // Find the NocoDB ID
-            const existingResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}?where=(username,eq,${username})`, {
+            const existingResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}?where=(username,eq,${encodeURIComponent(username)})`, {
                 method: 'GET',
                 headers: { 'xc-token': apiToken }
             });
