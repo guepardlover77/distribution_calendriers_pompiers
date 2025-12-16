@@ -258,6 +258,43 @@
             </div>
         </div>
 
+        <!-- Onglet Administration (admin seulement) -->
+        <div id="admin-tab" class="tab-content">
+            <div class="admin-container">
+                <div class="admin-header">
+                    <h2>⚙️ Administration</h2>
+                    <p class="admin-subtitle">Gérez les binômes et les zones</p>
+                </div>
+
+                <!-- Section Gestion des Binômes -->
+                <div class="admin-section">
+                    <div class="section-header">
+                        <h3>👥 Gestion des Binômes</h3>
+                        <button class="btn-primary" id="add-binome-btn">
+                            <i data-lucide="user-plus"></i>
+                            Ajouter un binôme
+                        </button>
+                    </div>
+
+                    <div class="binomes-list" id="admin-binomes-list">
+                        <p class="empty-state">Chargement des binômes...</p>
+                    </div>
+                </div>
+
+                <!-- Section Gestion des Zones -->
+                <div class="admin-section">
+                    <div class="section-header">
+                        <h3>🗺️ Gestion des Zones</h3>
+                        <p class="section-hint">Modifiez les binômes assignés ou les couleurs des zones</p>
+                    </div>
+
+                    <div class="zones-list" id="admin-zones-list">
+                        <p class="empty-state">Aucune zone créée</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Bottom Navigation Bar -->
         <nav class="bottom-nav" id="bottom-nav">
             <button class="bottom-nav-btn" id="add-distribution-btn-bottom" aria-label="Ajouter distribution">
@@ -275,6 +312,10 @@
             <button class="bottom-nav-btn" data-tab="stats" aria-label="Statistiques">
                 <i data-lucide="bar-chart-3"></i>
                 <span>Stats</span>
+            </button>
+            <button class="bottom-nav-btn" id="admin-tab-btn" data-tab="admin" aria-label="Administration" style="display: none;">
+                <i data-lucide="settings"></i>
+                <span>Admin</span>
             </button>
         </nav>
     </div>
@@ -472,6 +513,47 @@
 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancel-zone-modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Binôme (Create/Edit) -->
+    <div id="binome-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="binome-modal-title">Ajouter un binôme</h2>
+                <button class="modal-close" id="close-binome-modal">&times;</button>
+            </div>
+            <form id="binome-form">
+                <div class="form-group">
+                    <label for="binome-username">Nom d'utilisateur *</label>
+                    <input type="text" id="binome-username" required placeholder="Ex: jdupont">
+                    <small class="form-hint">Utilisé pour la connexion</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="binome-name">Nom complet *</label>
+                    <input type="text" id="binome-name" required placeholder="Ex: Jean Dupont">
+                </div>
+
+                <div class="form-group">
+                    <label for="binome-password">Mot de passe *</label>
+                    <input type="password" id="binome-password" placeholder="Laisser vide pour conserver">
+                    <small class="form-hint">Minimum 6 caractères. Laisser vide pour ne pas changer (mode édition)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="binome-is-admin">
+                        <input type="checkbox" id="binome-is-admin">
+                        Administrateur
+                    </label>
+                    <small class="form-hint">Les administrateurs ont accès à toutes les fonctionnalités</small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-binome-modal">Annuler</button>
                     <button type="submit" class="btn btn-primary">Enregistrer</button>
                 </div>
             </form>

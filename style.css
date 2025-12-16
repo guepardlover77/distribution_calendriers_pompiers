@@ -2250,3 +2250,243 @@ header {
         justify-content: center;
     }
 }
+
+/* =============================================
+   ADMIN TAB STYLES
+   ============================================= */
+
+.admin-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.admin-header {
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border);
+}
+
+.admin-header h2 {
+    margin: 0 0 8px 0;
+    color: var(--primary);
+    font-size: 28px;
+}
+
+.admin-subtitle {
+    margin: 0;
+    color: var(--secondary);
+    font-size: 14px;
+}
+
+.admin-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--primary);
+}
+
+.section-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--secondary);
+}
+
+/* Binomes List */
+.binomes-list {
+    display: grid;
+    gap: 12px;
+}
+
+.binome-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--theme);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.binome-item:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+}
+
+.binome-info {
+    flex: 1;
+}
+
+.binome-name {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 16px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.binome-username {
+    color: var(--secondary);
+    font-size: 13px;
+}
+
+.binome-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--accent);
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.binome-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-icon:hover {
+    transform: translateY(-1px);
+}
+
+.btn-edit {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #1d4ed8;
+}
+
+.btn-delete {
+    background: var(--status-danger);
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+}
+
+/* Zones List */
+.zones-list {
+    display: grid;
+    gap: 12px;
+}
+
+.zone-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--theme);
+    border-radius: 8px;
+    border-left: 4px solid;
+    transition: all 0.2s;
+}
+
+.zone-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.zone-info {
+    flex: 1;
+}
+
+.zone-name {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 16px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.zone-details {
+    color: var(--secondary);
+    font-size: 13px;
+}
+
+.zone-binome-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: 4px;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.zone-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.color-indicator {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.color-indicator:hover {
+    transform: scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-container {
+        padding: 16px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .binome-item,
+    .zone-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .binome-actions,
+    .zone-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}

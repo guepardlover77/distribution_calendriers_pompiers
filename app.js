@@ -280,6 +280,9 @@ class MapApplication {
 
         // Initialiser les icônes Lucide (avec délai pour s'assurer que le DOM est prêt)
         setTimeout(() => this.initLucideIcons(), 100);
+
+        // Initialize admin panel if user is admin (after binômes are loaded)
+        setTimeout(() => this.initAdminPanel(), 500);
     }
 
     /**
@@ -333,6 +336,15 @@ class MapApplication {
                 this.handleLogout();
             });
         }
+
+        // Show admin tab button if user is admin
+        if (this.auth.isAdmin()) {
+            const adminTabBtn = document.getElementById('admin-tab-btn');
+            if (adminTabBtn) {
+                adminTabBtn.style.display = 'flex';
+            }
+            console.log('[ADMIN] Admin tab button shown for admin user');
+        }
     }
 
     /**
@@ -380,6 +392,9 @@ class MapApplication {
             this.fetchBinomes();
             this.loadZonesFromStorage();
             this.loadDistributions();
+
+            // Initialize admin panel if user is admin (after binômes are loaded)
+            setTimeout(() => this.initAdminPanel(), 500);
 
             this.notifyUser(`Bienvenue ${this.auth.currentUser.binome_name}`, 'success');
 
@@ -4161,6 +4176,502 @@ class MapApplication {
                 console.log('[MERGE ZONES] Local zones exist, keeping them');
             }
         }
+    }
+
+    // ========================================
+    // ADMIN PANEL METHODS
+    // ========================================
+
+    /**
+     * Initialize admin panel
+     */
+    initAdminPanel() {
+        if (!this.auth.isAdmin()) {
+            console.log('[ADMIN] User is not admin, skipping admin panel initialization');
+            return;
+        }
+
+        console.log('[ADMIN] Initializing admin panel');
+
+        // Load binômes list
+        this.renderAdminBinomesList();
+
+        // Load zones list
+        this.renderAdminZonesList();
+
+        // Setup event listeners
+        this.initAdminEventListeners();
+    }
+
+    /**
+     * Setup admin event listeners
+     */
+    initAdminEventListeners() {
+        // Add binôme button
+        const addBinomeBtn = document.getElementById('add-binome-btn');
+        if (addBinomeBtn) {
+            addBinomeBtn.addEventListener('click', () => this.openBinomeModal());
+        }
+
+        // Binôme form submit
+        const binomeForm = document.getElementById('binome-form');
+        if (binomeForm) {
+            binomeForm.addEventListener('submit', (e) => this.handleBinomeFormSubmit(e));
+        }
+
+        // Close binôme modal
+        const closeBinomeModal = document.getElementById('close-binome-modal');
+        const cancelBinomeModal = document.getElementById('cancel-binome-modal');
+        if (closeBinomeModal) {
+            closeBinomeModal.addEventListener('click', () => this.closeBinomeModal());
+        }
+        if (cancelBinomeModal) {
+            cancelBinomeModal.addEventListener('click', () => this.closeBinomeModal());
+        }
+    }
+
+    /**
+     * Render binômes list in admin panel
+     */
+    renderAdminBinomesList() {
+        const container = document.getElementById('admin-binomes-list');
+        if (!container) return;
+
+        if (this.binomes.length === 0) {
+            container.innerHTML = '<p class="empty-state">Aucun binôme trouvé</p>';
+            return;
+        }
+
+        container.innerHTML = this.binomes.map(binome => `
+            <div class="binome-item">
+                <div class="binome-info">
+                    <span class="binome-name">
+                        ${binome.binome_name}
+                        ${binome.is_admin ? '<span class="binome-badge">ADMIN</span>' : ''}
+                    </span>
+                    <span class="binome-username">@${binome.username}</span>
+                </div>
+                <div class="binome-actions">
+                    <button class="btn-icon btn-edit" onclick="app.editBinome('${binome.username}')">
+                        <i data-lucide="edit-2" style="width: 16px; height: 16px;"></i>
+                        Modifier
+                    </button>
+                    <button class="btn-icon btn-delete" onclick="app.deleteBinome('${binome.username}')">
+                        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                        Supprimer
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
+    /**
+     * Render zones list in admin panel
+     */
+    renderAdminZonesList() {
+        const container = document.getElementById('admin-zones-list');
+        if (!container) return;
+
+        if (this.zones.length === 0) {
+            container.innerHTML = '<p class="empty-state">Aucune zone créée</p>';
+            return;
+        }
+
+        container.innerHTML = this.zones.map((zone, index) => {
+            const binomeDisplay = zone.binome_name
+                ? `<span class="zone-binome-display">👤 ${zone.binome_name}</span>`
+                : '<span style="color: var(--secondary); font-size: 12px;">Aucun binôme</span>';
+
+            return `
+                <div class="zone-item" style="border-left-color: ${zone.color}">
+                    <div class="zone-info">
+                        <span class="zone-name">${zone.name}</span>
+                        <span class="zone-details">${binomeDisplay}</span>
+                    </div>
+                    <div class="zone-actions">
+                        <div class="color-indicator"
+                             style="background-color: ${zone.color}"
+                             onclick="app.editZoneColor(${index})"
+                             title="Changer la couleur"></div>
+                        <button class="btn-icon btn-edit" onclick="app.editZoneBinome(${index})">
+                            <i data-lucide="user" style="width: 16px; height: 16px;"></i>
+                            Binôme
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="app.deleteZoneAdmin(${index})">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
+    /**
+     * Open binôme modal for create/edit
+     */
+    openBinomeModal(username = null) {
+        const modal = document.getElementById('binome-modal');
+        const modalTitle = document.getElementById('binome-modal-title');
+        const usernameInput = document.getElementById('binome-username');
+        const nameInput = document.getElementById('binome-name');
+        const passwordInput = document.getElementById('binome-password');
+        const isAdminCheckbox = document.getElementById('binome-is-admin');
+
+        if (username) {
+            // Edit mode
+            const binome = this.binomes.find(b => b.username === username);
+            if (!binome) return;
+
+            modalTitle.textContent = 'Modifier le binôme';
+            usernameInput.value = binome.username;
+            usernameInput.disabled = true; // Can't change username
+            nameInput.value = binome.binome_name;
+            passwordInput.value = '';
+            passwordInput.placeholder = 'Laisser vide pour conserver';
+            passwordInput.required = false;
+            isAdminCheckbox.checked = binome.is_admin === 1 || binome.is_admin === true;
+
+            this.editingBinome = username;
+        } else {
+            // Create mode
+            modalTitle.textContent = 'Ajouter un binôme';
+            usernameInput.value = '';
+            usernameInput.disabled = false;
+            nameInput.value = '';
+            passwordInput.value = '';
+            passwordInput.placeholder = 'Mot de passe';
+            passwordInput.required = true;
+            isAdminCheckbox.checked = false;
+
+            this.editingBinome = null;
+        }
+
+        modal.classList.add('active');
+    }
+
+    /**
+     * Close binôme modal
+     */
+    closeBinomeModal() {
+        const modal = document.getElementById('binome-modal');
+        modal.classList.remove('active');
+        this.editingBinome = null;
+    }
+
+    /**
+     * Handle binôme form submit
+     */
+    async handleBinomeFormSubmit(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('binome-username').value.trim();
+        const name = document.getElementById('binome-name').value.trim();
+        const password = document.getElementById('binome-password').value;
+        const isAdmin = document.getElementById('binome-is-admin').checked;
+
+        if (!username || !name) {
+            this.notifyUser('Veuillez remplir tous les champs requis', 'warning');
+            return;
+        }
+
+        if (!this.editingBinome && !password) {
+            this.notifyUser('Le mot de passe est requis pour créer un binôme', 'warning');
+            return;
+        }
+
+        if (password && password.length < 6) {
+            this.notifyUser('Le mot de passe doit contenir au moins 6 caractères', 'warning');
+            return;
+        }
+
+        try {
+            const baseUrl = NOCODB_CONFIG.baseUrl;
+            const apiToken = NOCODB_CONFIG.apiToken;
+
+            // Get project and tables
+            const projectsResponse = await fetch(`${baseUrl}/api/v1/db/meta/projects/`, {
+                method: 'GET',
+                headers: { 'xc-token': apiToken }
+            });
+            const projects = await projectsResponse.json();
+            const projectId = NOCODB_CONFIG.projectId || projects.list?.[0]?.id;
+
+            const tablesResponse = await fetch(`${baseUrl}/api/v1/db/meta/projects/${projectId}/tables`, {
+                method: 'GET',
+                headers: { 'xc-token': apiToken }
+            });
+            const tables = await tablesResponse.json();
+            const binomesTable = tables.list?.find(t => t.title === NOCODB_CONFIG.tables.binomes);
+
+            if (!binomesTable) {
+                throw new Error('Table Binomes not found');
+            }
+
+            const binomeData = {
+                username: username,
+                binome_name: name,
+                is_admin: isAdmin ? 1 : 0
+            };
+
+            // Only include password if provided
+            if (password) {
+                binomeData.password = password;
+            }
+
+            let response;
+            if (this.editingBinome) {
+                // Update existing binôme
+                // First, find the NocoDB ID
+                const existingResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}?where=(username,eq,${username})`, {
+                    method: 'GET',
+                    headers: { 'xc-token': apiToken }
+                });
+                const existing = await existingResponse.json();
+                const nocoId = existing.list?.[0]?.Id || existing.list?.[0]?.id;
+
+                if (!nocoId) {
+                    throw new Error('Binôme not found in database');
+                }
+
+                response = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}/${nocoId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'xc-token': apiToken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(binomeData)
+                });
+            } else {
+                // Create new binôme
+                response = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}`, {
+                    method: 'POST',
+                    headers: {
+                        'xc-token': apiToken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(binomeData)
+                });
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to save binôme: ${errorText}`);
+            }
+
+            // Refresh binômes list
+            await this.fetchBinomes();
+            this.renderAdminBinomesList();
+            this.closeBinomeModal();
+
+            this.notifyUser(`Binôme ${this.editingBinome ? 'modifié' : 'créé'} avec succès`, 'success');
+        } catch (error) {
+            console.error('[ADMIN] Error saving binôme:', error);
+            this.notifyUser(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Edit binôme
+     */
+    editBinome(username) {
+        this.openBinomeModal(username);
+    }
+
+    /**
+     * Delete binôme
+     */
+    async deleteBinome(username) {
+        if (!confirm(`Êtes-vous sûr de vouloir supprimer le binôme "${username}" ?`)) {
+            return;
+        }
+
+        try {
+            const baseUrl = NOCODB_CONFIG.baseUrl;
+            const apiToken = NOCODB_CONFIG.apiToken;
+
+            // Get project and tables
+            const projectsResponse = await fetch(`${baseUrl}/api/v1/db/meta/projects/`, {
+                method: 'GET',
+                headers: { 'xc-token': apiToken }
+            });
+            const projects = await projectsResponse.json();
+            const projectId = NOCODB_CONFIG.projectId || projects.list?.[0]?.id;
+
+            const tablesResponse = await fetch(`${baseUrl}/api/v1/db/meta/projects/${projectId}/tables`, {
+                method: 'GET',
+                headers: { 'xc-token': apiToken }
+            });
+            const tables = await tablesResponse.json();
+            const binomesTable = tables.list?.find(t => t.title === NOCODB_CONFIG.tables.binomes);
+
+            if (!binomesTable) {
+                throw new Error('Table Binomes not found');
+            }
+
+            // Find the NocoDB ID
+            const existingResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}?where=(username,eq,${username})`, {
+                method: 'GET',
+                headers: { 'xc-token': apiToken }
+            });
+            const existing = await existingResponse.json();
+            const nocoId = existing.list?.[0]?.Id || existing.list?.[0]?.id;
+
+            if (!nocoId) {
+                throw new Error('Binôme not found in database');
+            }
+
+            // Delete the binôme
+            const response = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}/${nocoId}`, {
+                method: 'DELETE',
+                headers: { 'xc-token': apiToken }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete binôme');
+            }
+
+            // Refresh binômes list
+            await this.fetchBinomes();
+            this.renderAdminBinomesList();
+
+            this.notifyUser('Binôme supprimé avec succès', 'success');
+        } catch (error) {
+            console.error('[ADMIN] Error deleting binôme:', error);
+            this.notifyUser(`Erreur: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Edit zone color
+     */
+    editZoneColor(zoneIndex) {
+        const zone = this.zones[zoneIndex];
+        if (!zone) return;
+
+        const newColor = prompt('Entrez une nouvelle couleur (format hex):', zone.color);
+        if (!newColor) return;
+
+        // Validate hex color
+        if (!/^#[0-9A-F]{6}$/i.test(newColor)) {
+            this.notifyUser('Couleur invalide. Utilisez le format hex (#RRGGBB)', 'warning');
+            return;
+        }
+
+        // Update zone color
+        zone.color = newColor;
+
+        // Update the layer style
+        const layers = this.drawnItems.getLayers();
+        if (layers[zoneIndex]) {
+            layers[zoneIndex].setStyle({
+                color: newColor,
+                fillColor: newColor,
+                fillOpacity: 0.2
+            });
+        }
+
+        // Save zones
+        this.saveZones();
+
+        // Refresh admin panel
+        this.renderAdminZonesList();
+
+        this.notifyUser('Couleur de la zone modifiée', 'success');
+    }
+
+    /**
+     * Edit zone binôme assignment
+     */
+    editZoneBinome(zoneIndex) {
+        const zone = this.zones[zoneIndex];
+        if (!zone) return;
+
+        // Create a simple selection dialog
+        const binomeOptions = ['', ...this.binomes.map(b => b.binome_name)];
+        const currentIndex = zone.binome_name ? binomeOptions.indexOf(zone.binome_name) : 0;
+
+        const selection = prompt(
+            `Binôme actuel: ${zone.binome_name || 'Aucun'}\n\n` +
+            `Entrez le nom du binôme ou laissez vide pour aucun:\n\n` +
+            this.binomes.map((b, i) => `${i + 1}. ${b.binome_name} (@${b.username})`).join('\n')
+        );
+
+        if (selection === null) return; // Cancelled
+
+        if (selection === '') {
+            // Remove binôme assignment
+            zone.binome_username = null;
+            zone.binome_name = null;
+        } else {
+            // Find binôme by name or number
+            let selectedBinome = this.binomes.find(b => b.binome_name === selection);
+
+            // Try by number
+            if (!selectedBinome) {
+                const num = parseInt(selection);
+                if (num > 0 && num <= this.binomes.length) {
+                    selectedBinome = this.binomes[num - 1];
+                }
+            }
+
+            if (selectedBinome) {
+                zone.binome_username = selectedBinome.username;
+                zone.binome_name = selectedBinome.binome_name;
+            } else {
+                this.notifyUser('Binôme non trouvé', 'warning');
+                return;
+            }
+        }
+
+        // Save zones
+        this.saveZones();
+
+        // Refresh admin panel
+        this.renderAdminZonesList();
+
+        this.notifyUser('Binôme de la zone modifié', 'success');
+    }
+
+    /**
+     * Delete zone from admin panel
+     */
+    deleteZoneAdmin(zoneIndex) {
+        const zone = this.zones[zoneIndex];
+        if (!zone) return;
+
+        if (!confirm(`Êtes-vous sûr de vouloir supprimer la zone "${zone.name}" ?`)) {
+            return;
+        }
+
+        // Remove layer from map
+        const layers = this.drawnItems.getLayers();
+        if (layers[zoneIndex]) {
+            this.drawnItems.removeLayer(layers[zoneIndex]);
+        }
+
+        // Update zones array
+        this.updateZonesFromLayers();
+
+        // Save zones
+        this.saveZones();
+
+        // Sync with NocoDB
+        this.scheduleSyncWithNocoDB();
+
+        // Refresh admin panel
+        this.renderAdminZonesList();
+
+        this.notifyUser('Zone supprimée', 'warning');
     }
 }
 
