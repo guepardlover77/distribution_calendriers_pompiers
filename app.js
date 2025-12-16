@@ -216,6 +216,8 @@ class MapApplication {
         // Gestion des zones
         this.nextZoneId = 1; // Compteur pour numérotation auto des zones
         this.editingZoneLayer = null; // Zone en cours d'édition dans le modal
+        this.binomes = []; // Liste des binômes disponibles pour assignation
+        this.selectedBinome = null; // Binôme sélectionné pour la zone en cours
 
         // Système de filtres unifié
         this.filters = {
@@ -272,6 +274,7 @@ class MapApplication {
         this.initEventListeners();
         this.initOfflineMode(); // Initialize offline mode detection
         this.initNocoDBConnection(); // Initialize NocoDB integration
+        this.fetchBinomes(); // Fetch binômes for zone assignment
         this.loadZonesFromStorage();
         this.loadDistributions();
 
@@ -374,6 +377,7 @@ class MapApplication {
             this.initEventListeners();
             this.initOfflineMode();
             this.initNocoDBConnection();
+            this.fetchBinomes();
             this.loadZonesFromStorage();
             this.loadDistributions();
 
@@ -1208,6 +1212,8 @@ class MapApplication {
                     id: existingZone.id || `zone-${Date.now()}-${index}`,
                     name: existingZone.name || `Zone ${this.nextZoneId++}`,
                     color: existingZone.color || this.getRandomZoneColor(),
+                    binome_username: existingZone.binome_username || null,
+                    binome_name: existingZone.binome_name || null,
                     geojson: {
                         type: 'Feature',
                         geometry: geoJSON.geometry,
@@ -1216,6 +1222,12 @@ class MapApplication {
                     createdAt: existingZone.createdAt || new Date().toISOString(),
                     updatedAt: new Date().toISOString()
                 };
+
+                // Si c'est la zone en cours d'édition et qu'un binôme est sélectionné
+                if (layer === this.editingZoneLayer && this.selectedBinome) {
+                    zoneData.binome_username = this.selectedBinome.username;
+                    zoneData.binome_name = this.selectedBinome.binome_name;
+                }
 
                 // Ajouter les propriétés spécifiques pour les cercles
                 if (layer instanceof L.Circle) {
@@ -1371,9 +1383,11 @@ class MapApplication {
         const form = document.getElementById('zone-form');
         const nameInput = document.getElementById('zone-name');
         const colorInput = document.getElementById('zone-color');
+        const binomeInput = document.getElementById('zone-binome');
 
         // Stocker la référence du layer pour plus tard
         this.editingZoneLayer = layer;
+        this.selectedBinome = null;
 
         // Trouver l'index de la zone existante si édition
         let zoneIndex = -1;
@@ -1390,6 +1404,17 @@ class MapApplication {
             nameInput.value = existingZone.name || '';
             colorInput.value = existingZone.color || '#10b981';
 
+            // Pré-remplir le binôme si assigné
+            if (existingZone.binome_username) {
+                const binome = this.binomes.find(b => b.username === existingZone.binome_username);
+                if (binome) {
+                    binomeInput.value = binome.binome_name;
+                    this.selectedBinome = binome;
+                }
+            } else {
+                binomeInput.value = '';
+            }
+
             // Appliquer la couleur au layer
             if (layer.setStyle) {
                 layer.setStyle({
@@ -1400,7 +1425,11 @@ class MapApplication {
         } else {
             nameInput.value = '';
             colorInput.value = '#10b981';
+            binomeInput.value = '';
         }
+
+        // Initialiser l'autocomplete
+        this.initBinomeAutocomplete();
 
         // Calculer et afficher les statistiques
         this.updateZoneStatisticsPreview(layer);
@@ -3344,6 +3373,156 @@ class MapApplication {
         }, 1000);
     }
 
+    /**
+     * Initialize binôme autocomplete for zone assignment
+     */
+    initBinomeAutocomplete() {
+        const input = document.getElementById('zone-binome');
+        const suggestionsContainer = document.getElementById('zone-binome-suggestions');
+
+        if (!input || !suggestionsContainer) return;
+
+        let selectedIndex = -1;
+
+        input.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+
+            if (query.length === 0) {
+                suggestionsContainer.classList.remove('active');
+                return;
+            }
+
+            // Filter binômes based on query
+            const matches = this.binomes.filter(binome =>
+                binome.binome_name.toLowerCase().includes(query) ||
+                binome.username.toLowerCase().includes(query)
+            );
+
+            if (matches.length === 0) {
+                suggestionsContainer.classList.remove('active');
+                return;
+            }
+
+            // Display suggestions
+            suggestionsContainer.innerHTML = matches.map((binome, index) => `
+                <div class="autocomplete-suggestion" data-index="${index}" data-username="${binome.username}">
+                    <span class="binome-name">${binome.binome_name}</span>
+                    <span class="binome-username">@${binome.username}</span>
+                </div>
+            `).join('');
+
+            suggestionsContainer.classList.add('active');
+            selectedIndex = -1;
+
+            // Add click handlers to suggestions
+            suggestionsContainer.querySelectorAll('.autocomplete-suggestion').forEach(el => {
+                el.addEventListener('click', () => {
+                    const username = el.dataset.username;
+                    const binome = matches.find(b => b.username === username);
+                    this.selectBinome(binome, input, suggestionsContainer);
+                });
+            });
+        });
+
+        // Keyboard navigation
+        input.addEventListener('keydown', (e) => {
+            const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-suggestion');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+                this.highlightSuggestion(suggestions, selectedIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                this.highlightSuggestion(suggestions, selectedIndex);
+            } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                e.preventDefault();
+                suggestions[selectedIndex].click();
+            } else if (e.key === 'Escape') {
+                suggestionsContainer.classList.remove('active');
+            }
+        });
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!input.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                suggestionsContainer.classList.remove('active');
+            }
+        });
+    }
+
+    /**
+     * Highlight a suggestion in the autocomplete
+     */
+    highlightSuggestion(suggestions, index) {
+        suggestions.forEach((el, i) => {
+            if (i === index) {
+                el.classList.add('selected');
+                el.scrollIntoView({ block: 'nearest' });
+            } else {
+                el.classList.remove('selected');
+            }
+        });
+    }
+
+    /**
+     * Select a binôme from autocomplete
+     */
+    selectBinome(binome, input, suggestionsContainer) {
+        this.selectedBinome = binome;
+        input.value = binome.binome_name;
+        suggestionsContainer.classList.remove('active');
+        console.log(`[BINOMES] Selected: ${binome.binome_name} (@${binome.username})`);
+    }
+
+    /**
+     * Fetch all binômes from NocoDB for zone assignment
+     */
+    async fetchBinomes() {
+        try {
+            const baseUrl = NOCODB_CONFIG.baseUrl;
+            const apiToken = NOCODB_CONFIG.apiToken;
+
+            // Get project ID
+            const projectsResponse = await fetch(`${baseUrl}/api/v1/db/meta/projects/`, {
+                method: 'GET',
+                headers: { 'xc-token': apiToken }
+            });
+            const projects = await projectsResponse.json();
+            const projectId = NOCODB_CONFIG.projectId || projects.list?.[0]?.id;
+
+            if (!projectId) {
+                console.error('No project found in NocoDB');
+                return;
+            }
+
+            // Get Binomes table
+            const tablesResponse = await fetch(`${baseUrl}/api/v1/db/meta/projects/${projectId}/tables`, {
+                method: 'GET',
+                headers: { 'xc-token': apiToken }
+            });
+            const tables = await tablesResponse.json();
+            const binomesTable = tables.list?.find(t => t.title === NOCODB_CONFIG.tables.binomes);
+
+            if (!binomesTable) {
+                console.error('Binomes table not found');
+                return;
+            }
+
+            // Fetch all binômes
+            const binomesResponse = await fetch(`${baseUrl}/api/v1/db/data/noco/${projectId}/${binomesTable.title}`, {
+                method: 'GET',
+                headers: { 'xc-token': apiToken }
+            });
+            const data = await binomesResponse.json();
+            this.binomes = data.list || [];
+
+            console.log(`[BINOMES] Loaded ${this.binomes.length} binômes for zone assignment`);
+        } catch (error) {
+            console.error('[BINOMES] Error fetching binômes:', error);
+        }
+    }
 
     /**
      * Update sync status message
@@ -3750,7 +3929,9 @@ class MapApplication {
                     const payload = {
                         name: zone.name || `Zone ${i + 1}`,
                         geojson: JSON.stringify(zone.geojson),
-                        color: zone.color || '#10b981'
+                        color: zone.color || '#10b981',
+                        binome_username: zone.binome_username || null,
+                        binome_name: zone.binome_name || null
                     };
                     console.log('[ZONES SYNC] Payload:', payload);
 
@@ -3925,11 +4106,12 @@ class MapApplication {
                     ? JSON.parse(zoneData.geojson)
                     : zoneData.geojson;
 
+                const zoneColor = zoneData.color || '#10b981';
                 const layer = L.geoJSON(geojson, {
                     interactive: false,
                     style: {
-                        color: '#667eea',
-                        fillColor: '#764ba2',
+                        color: zoneColor,
+                        fillColor: zoneColor,
                         fillOpacity: 0.2,
                         weight: 2
                     }
@@ -3940,8 +4122,14 @@ class MapApplication {
                 });
 
                 this.zones.push({
+                    id: zoneData.id || `zone-${Date.now()}-${this.zones.length}`,
                     name: zoneData.name,
-                    geojson: geojson
+                    color: zoneData.color || '#10b981',
+                    binome_username: zoneData.binome_username || null,
+                    binome_name: zoneData.binome_name || null,
+                    geojson: geojson,
+                    createdAt: zoneData.createdAt || new Date().toISOString(),
+                    updatedAt: zoneData.updatedAt || new Date().toISOString()
                 });
                 });
 

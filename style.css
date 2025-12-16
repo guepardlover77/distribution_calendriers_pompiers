@@ -767,6 +767,60 @@ form {
     margin-top: 4px;
 }
 
+/* Autocomplete styles */
+.autocomplete-container {
+    position: relative;
+}
+
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+.autocomplete-suggestions.active {
+    display: block;
+}
+
+.autocomplete-suggestion {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid var(--border);
+}
+
+.autocomplete-suggestion:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-suggestion:hover,
+.autocomplete-suggestion.selected {
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.autocomplete-suggestion .binome-name {
+    font-weight: 500;
+    color: var(--text);
+    display: block;
+}
+
+.autocomplete-suggestion .binome-username {
+    font-size: 12px;
+    color: var(--secondary);
+    display: block;
+    margin-top: 2px;
+}
+
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
