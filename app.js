@@ -1422,7 +1422,7 @@ class MapApplication {
             effectue: distributionsInZone.filter(d => d.status === 'effectue').length,
             repasser: distributionsInZone.filter(d => d.status === 'repasser').length,
             refus: distributionsInZone.filter(d => d.status === 'refus').length,
-            totalAmount: distributionsInZone.reduce((sum, d) => sum + (d.amount || 0), 0),
+            totalAmount: distributionsInZone.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0),
             successRate: 0
         };
 
@@ -1444,7 +1444,7 @@ class MapApplication {
         document.getElementById('zone-stat-effectue').textContent = stats.effectue;
         document.getElementById('zone-stat-repasser').textContent = stats.repasser;
         document.getElementById('zone-stat-refus').textContent = stats.refus;
-        document.getElementById('zone-stat-amount').textContent = stats.totalAmount.toFixed(2) + ' €';
+        document.getElementById('zone-stat-amount').textContent = (parseFloat(stats.totalAmount) || 0).toFixed(2) + ' €';
     }
 
     /**
@@ -2173,7 +2173,7 @@ class MapApplication {
         `;
 
         if (dist.amount > 0) {
-            html += `<div class="dist-info">💰 <span class="dist-amount">${dist.amount.toFixed(2)} €</span>`;
+            html += `<div class="dist-info">💰 <span class="dist-amount">${(parseFloat(dist.amount) || 0).toFixed(2)} €</span>`;
             if (dist.payment) {
                 html += ` - ${paymentLabels[dist.payment] || dist.payment}`;
             }
@@ -2269,7 +2269,7 @@ class MapApplication {
         `;
 
         if (dist.amount > 0) {
-            content += `<br><strong>Montant:</strong> ${dist.amount.toFixed(2)} €`;
+            content += `<br><strong>Montant:</strong> ${(parseFloat(dist.amount) || 0).toFixed(2)} €`;
             if (dist.payment) {
                 content += ` (${paymentLabels[dist.payment] || dist.payment})`;
             }
@@ -2413,7 +2413,7 @@ class MapApplication {
                 <div class="dist-address">${dist.address}</div>
                 <div class="dist-info">
                     <span class="dist-status ${dist.status}">${statusLabels[dist.status]}</span>
-                    ${dist.amount > 0 ? `<span><strong>${dist.amount.toFixed(2)} €</strong></span>` : ''}
+                    ${dist.amount > 0 ? `<span><strong>${(parseFloat(dist.amount) || 0).toFixed(2)} €</strong></span>` : ''}
                     ${dist.payment ? `<span>${paymentLabels[dist.payment]}</span>` : ''}
                 </div>
                 ${dist.notes ? `<div style="font-size: 12px; color: #6b7280; margin-top: 5px;">${dist.notes}</div>` : ''}
@@ -2978,7 +2978,7 @@ class MapApplication {
                 <div class="dist-address">${dist.address}</div>
                 <div class="dist-info">
                     <span class="dist-status ${dist.status}">${statusLabels[dist.status]}</span>
-                    ${dist.amount > 0 ? `<span><strong>${dist.amount.toFixed(2)} €</strong></span>` : ''}
+                    ${dist.amount > 0 ? `<span><strong>${(parseFloat(dist.amount) || 0).toFixed(2)} €</strong></span>` : ''}
                     ${dist.payment ? `<span>${paymentLabels[dist.payment]}</span>` : ''}
                 </div>
                 ${dist.notes ? `<div style="font-size: 12px; color: #6b7280; margin-top: 5px;">${dist.notes}</div>` : ''}
