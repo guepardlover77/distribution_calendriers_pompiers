@@ -1285,18 +1285,14 @@ class MapApplication {
                 // Filter zones based on user permissions
                 let zonesToLoad = allZones;
                 if (!this.auth.isAdmin()) {
-                    // Regular user sees only their assigned zone
-                    zonesToLoad = allZones.filter((zoneData, index) => {
-                        // Create a temporary zone object to check access
-                        const tempZone = {
-                            id: `zone-${index}`,
-                            name: `Zone ${index + 1}`
-                        };
-                        return this.auth.canAccessZone(tempZone);
+                    // Regular user sees only their assigned zones (not others' zones, not unassigned zones)
+                    const currentUsername = this.auth.getCurrentUser()?.username;
+                    zonesToLoad = allZones.filter(zoneData => {
+                        return zoneData.binome_username === currentUsername;
                     });
-                    console.log(`[AUTH] ${this.auth.currentUser.binome_name}: ${zonesToLoad.length}/${allZones.length} zone(s) chargée(s)`);
+                    console.log(`[ZONES FILTER] ${this.auth.currentUser.binome_name}: ${zonesToLoad.length}/${allZones.length} zone(s) assignée(s)`);
                 } else {
-                    console.log(`[AUTH] Admin: ${allZones.length} zone(s) chargée(s)`);
+                    console.log(`[ZONES FILTER] Admin: ${allZones.length} zone(s) chargée(s)`);
                 }
 
                 zonesToLoad.forEach((zoneData) => {
@@ -4115,7 +4111,17 @@ class MapApplication {
                 this.drawnItems.clearLayers();
                 this.zones = [];
 
-                nocoDBData.zones.forEach(zoneData => {
+                // Filter zones for non-admin users
+                let zonesToLoad = nocoDBData.zones;
+                if (!this.auth.isAdmin()) {
+                    const currentUsername = this.auth.getCurrentUser()?.username;
+                    zonesToLoad = nocoDBData.zones.filter(zoneData => {
+                        return zoneData.binome_username === currentUsername;
+                    });
+                    console.log(`[MERGE ZONES] ${this.auth.currentUser.binome_name}: ${zonesToLoad.length}/${nocoDBData.zones.length} zone(s) assignée(s)`);
+                }
+
+                zonesToLoad.forEach(zoneData => {
                 // Parse GeoJSON if it's a string
                 const geojson = typeof zoneData.geojson === 'string'
                     ? JSON.parse(zoneData.geojson)
@@ -4552,14 +4558,98 @@ class MapApplication {
     }
 
     /**
-     * Edit zone color
+     * Edit zone color - Opens modal with color picker
      */
     editZoneColor(zoneIndex) {
         const zone = this.zones[zoneIndex];
         if (!zone) return;
 
-        const newColor = prompt('Entrez une nouvelle couleur (format hex):', zone.color);
-        if (!newColor) return;
+        // Store current zone index for later
+        this.editingZoneIndex = zoneIndex;
+
+        // Open modal
+        const modal = document.getElementById('zone-color-modal');
+        const zoneName = document.getElementById('zone-color-zone-name');
+        const customColorInput = document.getElementById('custom-color-input');
+        const customColorHex = document.getElementById('custom-color-hex');
+        const previewBox = document.getElementById('color-preview-box');
+
+        zoneName.textContent = `Zone : ${zone.name}`;
+        customColorInput.value = zone.color;
+        customColorHex.value = zone.color;
+        previewBox.style.background = zone.color;
+
+        // Remove previous selected class
+        document.querySelectorAll('.color-preset-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            if (btn.dataset.color === zone.color) {
+                btn.classList.add('selected');
+            }
+        });
+
+        // Setup color picker event listeners
+        this.setupColorPickerListeners();
+
+        modal.classList.add('active');
+    }
+
+    /**
+     * Setup color picker event listeners
+     */
+    setupColorPickerListeners() {
+        const customColorInput = document.getElementById('custom-color-input');
+        const customColorHex = document.getElementById('custom-color-hex');
+        const previewBox = document.getElementById('color-preview-box');
+
+        // Color presets
+        document.querySelectorAll('.color-preset-btn').forEach(btn => {
+            btn.onclick = () => {
+                const color = btn.dataset.color;
+                document.querySelectorAll('.color-preset-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                customColorInput.value = color;
+                customColorHex.value = color;
+                previewBox.style.background = color;
+            };
+        });
+
+        // Custom color input (color picker)
+        customColorInput.oninput = (e) => {
+            const color = e.target.value;
+            customColorHex.value = color;
+            previewBox.style.background = color;
+            document.querySelectorAll('.color-preset-btn').forEach(b => b.classList.remove('selected'));
+        };
+
+        // Custom color hex input
+        customColorHex.oninput = (e) => {
+            const color = e.target.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                customColorInput.value = color;
+                previewBox.style.background = color;
+                document.querySelectorAll('.color-preset-btn').forEach(b => b.classList.remove('selected'));
+            }
+        };
+
+        // Confirm button
+        const confirmBtn = document.getElementById('confirm-zone-color');
+        confirmBtn.onclick = () => this.confirmZoneColor();
+
+        // Cancel button
+        const cancelBtn = document.getElementById('cancel-zone-color-modal');
+        const closeBtn = document.getElementById('close-zone-color-modal');
+        cancelBtn.onclick = () => this.closeZoneColorModal();
+        closeBtn.onclick = () => this.closeZoneColorModal();
+    }
+
+    /**
+     * Confirm zone color change
+     */
+    confirmZoneColor() {
+        const zone = this.zones[this.editingZoneIndex];
+        if (!zone) return;
+
+        const newColor = document.getElementById('custom-color-hex').value;
 
         // Validate hex color
         if (!/^#[0-9A-F]{6}$/i.test(newColor)) {
@@ -4572,8 +4662,8 @@ class MapApplication {
 
         // Update the layer style
         const layers = this.drawnItems.getLayers();
-        if (layers[zoneIndex]) {
-            layers[zoneIndex].setStyle({
+        if (layers[this.editingZoneIndex]) {
+            layers[this.editingZoneIndex].setStyle({
                 color: newColor,
                 fillColor: newColor,
                 fillOpacity: 0.2
@@ -4586,50 +4676,116 @@ class MapApplication {
         // Refresh admin panel
         this.renderAdminZonesList();
 
+        // Close modal
+        this.closeZoneColorModal();
+
         this.notifyUser('Couleur de la zone modifiée', 'success');
     }
 
     /**
-     * Edit zone binôme assignment
+     * Close zone color modal
+     */
+    closeZoneColorModal() {
+        const modal = document.getElementById('zone-color-modal');
+        modal.classList.remove('active');
+        this.editingZoneIndex = null;
+    }
+
+    /**
+     * Edit zone binôme assignment - Opens modal with radio buttons
      */
     editZoneBinome(zoneIndex) {
         const zone = this.zones[zoneIndex];
         if (!zone) return;
 
-        // Create a simple selection dialog
-        const binomeOptions = ['', ...this.binomes.map(b => b.binome_name)];
-        const currentIndex = zone.binome_name ? binomeOptions.indexOf(zone.binome_name) : 0;
+        // Store current zone index for later
+        this.editingZoneIndex = zoneIndex;
 
-        const selection = prompt(
-            `Binôme actuel: ${zone.binome_name || 'Aucun'}\n\n` +
-            `Entrez le nom du binôme ou laissez vide pour aucun:\n\n` +
-            this.binomes.map((b, i) => `${i + 1}. ${b.binome_name} (@${b.username})`).join('\n')
-        );
+        // Open modal
+        const modal = document.getElementById('zone-binome-modal');
+        const zoneName = document.getElementById('zone-binome-zone-name');
+        const binomeList = document.getElementById('binome-selection-list');
 
-        if (selection === null) return; // Cancelled
+        zoneName.textContent = `Zone : ${zone.name}`;
 
-        if (selection === '') {
+        // Build radio button list
+        let html = '';
+
+        // Option for "Aucun binôme"
+        const isNone = !zone.binome_username;
+        html += `
+            <div class="binome-radio-item ${isNone ? 'selected' : ''}" data-username="">
+                <input type="radio" name="zone-binome" value="" id="binome-none" ${isNone ? 'checked' : ''}>
+                <label for="binome-none" class="binome-radio-label">
+                    <span class="binome-radio-name">Aucun binôme</span>
+                    <span class="binome-radio-username">Zone non assignée</span>
+                </label>
+            </div>
+        `;
+
+        // Options for each binôme
+        this.binomes.forEach((binome, index) => {
+            const isSelected = zone.binome_username === binome.username;
+            html += `
+                <div class="binome-radio-item ${isSelected ? 'selected' : ''}" data-username="${binome.username}">
+                    <input type="radio" name="zone-binome" value="${binome.username}" id="binome-${index}" ${isSelected ? 'checked' : ''}>
+                    <label for="binome-${index}" class="binome-radio-label">
+                        <span class="binome-radio-name">${binome.binome_name}</span>
+                        <span class="binome-radio-username">@${binome.username}</span>
+                    </label>
+                </div>
+            `;
+        });
+
+        binomeList.innerHTML = html;
+
+        // Setup event listeners for radio items
+        document.querySelectorAll('.binome-radio-item').forEach(item => {
+            item.onclick = () => {
+                document.querySelectorAll('.binome-radio-item').forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+                item.querySelector('input[type="radio"]').checked = true;
+            };
+        });
+
+        // Confirm button
+        const confirmBtn = document.getElementById('confirm-zone-binome');
+        confirmBtn.onclick = () => this.confirmZoneBinome();
+
+        // Cancel button
+        const cancelBtn = document.getElementById('cancel-zone-binome-modal');
+        const closeBtn = document.getElementById('close-zone-binome-modal');
+        cancelBtn.onclick = () => this.closeZoneBinomeModal();
+        closeBtn.onclick = () => this.closeZoneBinomeModal();
+
+        modal.classList.add('active');
+    }
+
+    /**
+     * Confirm zone binôme assignment
+     */
+    confirmZoneBinome() {
+        const zone = this.zones[this.editingZoneIndex];
+        if (!zone) return;
+
+        const selectedRadio = document.querySelector('input[name="zone-binome"]:checked');
+        if (!selectedRadio) {
+            this.notifyUser('Veuillez sélectionner un binôme', 'warning');
+            return;
+        }
+
+        const selectedUsername = selectedRadio.value;
+
+        if (selectedUsername === '') {
             // Remove binôme assignment
             zone.binome_username = null;
             zone.binome_name = null;
         } else {
-            // Find binôme by name or number
-            let selectedBinome = this.binomes.find(b => b.binome_name === selection);
-
-            // Try by number
-            if (!selectedBinome) {
-                const num = parseInt(selection);
-                if (num > 0 && num <= this.binomes.length) {
-                    selectedBinome = this.binomes[num - 1];
-                }
-            }
-
+            // Find selected binôme
+            const selectedBinome = this.binomes.find(b => b.username === selectedUsername);
             if (selectedBinome) {
                 zone.binome_username = selectedBinome.username;
                 zone.binome_name = selectedBinome.binome_name;
-            } else {
-                this.notifyUser('Binôme non trouvé', 'warning');
-                return;
             }
         }
 
@@ -4639,7 +4795,19 @@ class MapApplication {
         // Refresh admin panel
         this.renderAdminZonesList();
 
+        // Close modal
+        this.closeZoneBinomeModal();
+
         this.notifyUser('Binôme de la zone modifié', 'success');
+    }
+
+    /**
+     * Close zone binôme modal
+     */
+    closeZoneBinomeModal() {
+        const modal = document.getElementById('zone-binome-modal');
+        modal.classList.remove('active');
+        this.editingZoneIndex = null;
     }
 
     /**

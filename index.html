@@ -560,6 +560,76 @@
         </div>
     </div>
 
+    <!-- Modal Zone Binôme Assignment -->
+    <div id="zone-binome-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Assigner un binôme à la zone</h2>
+                <button class="modal-close" id="close-zone-binome-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-subtitle" id="zone-binome-zone-name"></p>
+
+                <div class="binome-selection-list" id="binome-selection-list">
+                    <!-- Radio buttons will be populated dynamically -->
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-zone-binome-modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="confirm-zone-binome">Confirmer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Zone Color Picker -->
+    <div id="zone-color-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Changer la couleur de la zone</h2>
+                <button class="modal-close" id="close-zone-color-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-subtitle" id="zone-color-zone-name"></p>
+
+                <div class="color-picker-container">
+                    <div class="color-presets-grid">
+                        <button class="color-preset-btn" data-color="#10b981" style="background: #10b981;" title="Vert"></button>
+                        <button class="color-preset-btn" data-color="#3b82f6" style="background: #3b82f6;" title="Bleu"></button>
+                        <button class="color-preset-btn" data-color="#f59e0b" style="background: #f59e0b;" title="Orange"></button>
+                        <button class="color-preset-btn" data-color="#ef4444" style="background: #ef4444;" title="Rouge"></button>
+                        <button class="color-preset-btn" data-color="#8b5cf6" style="background: #8b5cf6;" title="Violet"></button>
+                        <button class="color-preset-btn" data-color="#ec4899" style="background: #ec4899;" title="Rose"></button>
+                        <button class="color-preset-btn" data-color="#06b6d4" style="background: #06b6d4;" title="Cyan"></button>
+                        <button class="color-preset-btn" data-color="#84cc16" style="background: #84cc16;" title="Lime"></button>
+                        <button class="color-preset-btn" data-color="#f97316" style="background: #f97316;" title="Orange foncé"></button>
+                        <button class="color-preset-btn" data-color="#6366f1" style="background: #6366f1;" title="Indigo"></button>
+                        <button class="color-preset-btn" data-color="#14b8a6" style="background: #14b8a6;" title="Teal"></button>
+                        <button class="color-preset-btn" data-color="#a855f7" style="background: #a855f7;" title="Violet clair"></button>
+                    </div>
+
+                    <div class="custom-color-picker">
+                        <label for="custom-color-input">Ou choisissez une couleur personnalisée :</label>
+                        <div class="color-input-wrapper">
+                            <input type="color" id="custom-color-input" value="#10b981">
+                            <input type="text" id="custom-color-hex" value="#10b981" pattern="^#[0-9A-Fa-f]{6}$" placeholder="#RRGGBB">
+                        </div>
+                    </div>
+
+                    <div class="color-preview">
+                        <span>Aperçu :</span>
+                        <div class="color-preview-box" id="color-preview-box" style="background: #10b981;"></div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-zone-color-modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="confirm-zone-color">Confirmer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
