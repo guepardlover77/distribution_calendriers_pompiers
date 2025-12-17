@@ -147,7 +147,7 @@ Dans NocoDB :
 
 ### 3. Configurer l'Application
 
-Éditez le fichier `nocodb-config.js` :
+Éditez le fichier `config/nocodb-config.js` :
 
 ```javascript
 const NOCODB_CONFIG = {
@@ -293,20 +293,33 @@ make clean-all
 
 ```
 distribution_calendriers_pompiers/
-├── 📄 index.html              # Page principale
-├── 📜 app.js                  # Logique application (3000+ lignes)
-├── 🎨 style.css               # Styles CSS (1900+ lignes)
-├── ⚙️ nocodb-config.js        # Configuration NocoDB
+├── 📄 index.html              # Page principale (racine pour GitHub Pages)
+├── 📁 assets/                 # Assets de l'application
+│   ├── js/
+│   │   ├── app.js             # Logique application (3000+ lignes)
+│   │   ├── api-proxy.js       # Proxy API
+│   │   └── config-adapter.js  # Adaptateur de configuration
+│   └── css/
+│       └── style.css          # Styles CSS (1900+ lignes)
+├── 📁 config/                 # Configuration
+│   ├── config.example.js      # Template de configuration
+│   ├── config.js              # Configuration locale (ignoré par git)
+│   └── nocodb-config.js       # Configuration NocoDB (ignoré par git)
+├── 📁 docs/                   # Documentation
+│   ├── guides/                # Guides de déploiement
+│   │   ├── DEPLOYMENT.md
+│   │   ├── DEPLOY_GITHUB_PAGES.md
+│   │   └── QUICKSTART_GITHUB_PAGES.md
+│   └── archive/               # Anciens fichiers archivés
+├── 📁 cloudflare-worker/      # Worker Cloudflare pour CORS
 ├── 🐳 docker-compose.yml      # Configuration Docker
 ├── 🌐 nginx.conf              # Configuration Nginx
 ├── 🔧 Makefile                # Commandes automatisées
 ├── 📋 .env.example            # Template variables d'environnement
-├── 🚫 .dockerignore           # Exclusions Docker
 ├── 🚫 .gitignore              # Exclusions Git
 ├── 📖 README.md               # Ce fichier
-├── 📚 DEPLOYMENT.md           # Guide de déploiement détaillé
-└── 📁 docs/                   # Documentation supplémentaire
-    └── archive/               # Anciens fichiers archivés
+├── 📜 CONTRIBUTING.md         # Guide de contribution
+└── 📜 LICENSE                 # Licence du projet
 ```
 
 ---
@@ -367,7 +380,7 @@ votre-domaine.com {
 - ✅ **Changez TOUS les mots de passe** dans `.env` avant de déployer
 - ✅ **Utilisez HTTPS** en production (Caddy, Traefik, Let's Encrypt)
 - ✅ **Configurez un firewall** (UFW, iptables)
-- ✅ **Ne commitez jamais** `.env` ou `nocodb-config.js` (ils sont dans `.gitignore`)
+- ✅ **Ne commitez jamais** `.env` ou `config/nocodb-config.js` (ils sont dans `.gitignore`)
 - ✅ **Effectuez des backups réguliers** (automatisables avec cron)
 - ✅ **Mettez à jour les images Docker** régulièrement
 

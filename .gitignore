@@ -1,8 +1,8 @@
 # Configuration files with sensitive data
-nocodb-config.js  # Contient le token API NocoDB - NE JAMAIS COMMITER
+config/nocodb-config.js  # Contient le token API NocoDB - NE JAMAIS COMMITER
 .env
 
-# Note: config.js peut être commité car il contient seulement l'URL du worker Cloudflare (publique)
+# Note: config/config.js peut être commité car il contient seulement l'URL du worker Cloudflare (publique)
 
 # Docker
 .dockerignore

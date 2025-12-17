@@ -235,7 +235,6 @@ class MapApplication {
         this.filterDebounceTimeout = null; // Pour debounce de la recherche
         this.charts = {
             status: null,
-            amount: null,
             payment: null,
             timeline: null
         };
@@ -2524,7 +2523,6 @@ class MapApplication {
         this.updateStatsCards();
         this.updateDetailedStats();
         this.createStatusChart();
-        this.createAmountChart();
         this.createPaymentChart();
         this.createTimelineChart();
     }
@@ -2658,51 +2656,6 @@ class MapApplication {
                         labels: {
                             padding: 15,
                             font: { size: 12, weight: '600' }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // Créer le graphique des montants collectés
-    createAmountChart() {
-        const ctx = document.getElementById('amountChart');
-        if (!ctx) return;
-
-        const stats = this.calculateStats();
-
-        if (this.charts.amount) {
-            this.charts.amount.destroy();
-        }
-
-        this.charts.amount = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Effectué', 'À repasser', 'Refus'],
-                datasets: [{
-                    label: 'Montant total (€)',
-                    data: [
-                        this.getAmountByStatus('effectue'),
-                        this.getAmountByStatus('repasser'),
-                        this.getAmountByStatus('refus')
-                    ],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-                    borderWidth: 0,
-                    borderRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: (value) => value + ' €'
                         }
                     }
                 }
