@@ -11,7 +11,29 @@
       "Bash(git branch:*)",
       "Bash(git remote add:*)",
       "Bash(git push:*)",
-      "Bash(node -c:*)"
+      "Bash(node -c:*)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)",
+      "Bash(git -C \"C:\\Users\\admin3\\Documents\\Maison\\Informatique\\pycharm\\distribution_calendriers_pompiers\" log --oneline -20)",
+      "Bash(npm install:*)",
+      "Bash(xcopy:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(npx cap init:*)",
+      "Bash(npx cap:*)",
+      "Bash(gradlew.bat assembleDebug:*)",
+      "Bash(.gradlew.bat assembleDebug:*)",
+      "Bash(java:*)",
+      "Bash(mkdir:*)",
+      "Bash(copy .env.example .env)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx wrangler deploy)",
+      "Bash(npx wrangler login)",
+      "Bash(npx wrangler secret list)",
+      "Bash(npx tsc:*)",
+      "Bash(rm:*)",
+      "Bash(git ls-tree:*)"
     ]
-  }
+  },
+  "outputStyle": "default"
 }

@@ -1,490 +1,243 @@
-# 🚒 Distribution Calendriers Pompiers
+# Distribution Calendriers Pompiers
 
-> Application web moderne pour gérer la distribution de calendriers des pompiers avec cartographie interactive, statistiques en temps réel et base de données NocoDB.
+Application mobile et web pour la gestion de la distribution de calendriers des pompiers avec cartographie interactive et synchronisation NocoDB.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)](https://www.docker.com/)
-[![NocoDB](https://img.shields.io/badge/Database-NocoDB-orange.svg)](https://nocodb.com/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-
-<div align="center">
-  <img src="docs/screenshots/demo.gif" alt="Demo" width="800"/>
-</div>
+[![React](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://reactjs.org/)
+[![Ionic](https://img.shields.io/badge/Ionic-8.0-3880ff.svg)](https://ionicframework.com/)
+[![Capacitor](https://img.shields.io/badge/Capacitor-6.0-119eff.svg)](https://capacitorjs.com/)
 
 ---
 
-## ✨ Fonctionnalités
+## Fonctionnalites
 
-### 🗺️ Cartographie Interactive
-- ✅ Carte en temps réel avec **Leaflet** et **OpenStreetMap**
-- ✅ Marqueurs personnalisés par statut (effectué 🟢, à repasser 🟠, refus 🔴)
-- ✅ **Géolocalisation automatique** de l'utilisateur
-- ✅ **Centrage automatique** sur la dernière distribution au chargement
-- ✅ Outils de dessin pour définir des zones
-- ✅ Recherche d'adresse intelligente avec géocodage (BAN API)
+### Cartographie Interactive
+- Carte en temps reel avec Leaflet et OpenStreetMap
+- Marqueurs personnalises par statut (effectue, a repasser, refus)
+- Geolocalisation automatique
+- Creation et gestion de zones par dessin
 
-### 📊 Gestion des Distributions
-- ✅ Ajout **rapide et intuitif** de distributions
-- ✅ Filtrage avancé par statut, date, adresse
-- ✅ Modification et suppression en un clic
-- ✅ Historique complet de toutes les distributions
-- ✅ Mode automatique (recherche) et manuel (coordonnées GPS)
+### Gestion des Distributions
+- Ajout rapide de distributions avec geocodage automatique
+- Filtrage par statut, date, binome
+- Historique complet des distributions
+- Synchronisation avec NocoDB
 
-### 📈 Statistiques et Analyses
-- ✅ **Dashboard complet** avec graphiques interactifs (Chart.js)
-- ✅ Indicateurs clés : taux de réussite, montants moyens, tendances
-- ✅ Graphiques : répartition par statut, moyens de paiement, évolution temporelle
-- ✅ Statistiques détaillées par binôme
-- ✅ Export de données via NocoDB
+### Statistiques
+- Dashboard avec indicateurs cles
+- Graphiques interactifs (Chart.js)
+- Taux de reussite, montants, tendances
 
-### 👥 Multi-utilisateurs et Authentification
-- ✅ Système d'**authentification sécurisé**
-- ✅ Gestion par **binômes** de pompiers
-- ✅ Droits **administrateur** pour gestion globale
-- ✅ Vue personnalisée par utilisateur
-- ✅ Isolation des données par binôme
+### Multi-utilisateurs
+- Authentification securisee
+- Gestion par binomes de pompiers
+- Droits administrateur
+- Zones attribuees par binome
 
-### 📱 Interface Moderne et Responsive
-- ✅ **Design mobile-first** avec bottom navigation bar
-- ✅ Optimisé pour mobile, tablette et desktop
-- ✅ **Icônes SVG modernes** (Lucide Icons)
-- ✅ Thème épuré et professionnel (PaperMod inspired)
-- ✅ Animations fluides et transitions CSS
-- ✅ Mode sombre/clair avec variables CSS
-
-### 💾 Base de Données NocoDB
-- ✅ **NocoDB** comme backend no-code
-- ✅ **PostgreSQL** pour la persistance des données
-- ✅ Synchronisation en temps réel
-- ✅ API REST automatique
-- ✅ Backups faciles via Docker
+### Application Mobile
+- Interface Ionic optimisee mobile
+- Build Android avec Capacitor
+- Mode hors-ligne avec stockage local
 
 ---
 
-## 🚀 Installation Rapide
+## Stack Technique
 
-### Prérequis
+| Composant | Technologie |
+|-----------|-------------|
+| Frontend | React 18 + TypeScript |
+| UI | Ionic Framework 8 |
+| State | Zustand |
+| Cartographie | Leaflet + Leaflet Draw |
+| Graphiques | Chart.js |
+| Build | Vite |
+| Mobile | Capacitor 6 |
+| Backend | NocoDB |
+| Proxy API | Cloudflare Worker |
 
-- [Docker](https://docs.docker.com/get-docker/) (20.10+)
-- [Docker Compose](https://docs.docker.com/compose/install/) (2.0+)
-- Ports 80 et 8080 disponibles
+---
 
-### Installation en 3 commandes
+## Installation
+
+### Prerequis
+
+- Node.js 18+
+- npm ou yarn
+- Instance NocoDB configuree
+- (Optionnel) Android Studio pour le build mobile
+
+### Installation
 
 ```bash
-# 1. Cloner le projet
-git clone https://github.com/votre-username/distribution_calendriers_pompiers.git
-cd distribution_calendriers_pompiers
+# Cloner le projet
+git clone https://github.com/guepardlover77/distribution_calendriers_pompiers.git
+cd distribution_calendriers_pompiers/react-ionic-app
 
-# 2. Configurer l'environnement
+# Installer les dependances
+npm install
+
+# Configurer l'environnement
 cp .env.example .env
-# Éditez .env et changez les mots de passe
+# Editez .env avec vos parametres NocoDB
 
-# 3. Démarrer l'application
-make install
-# ou
-docker-compose up -d
+# Lancer en developpement
+npm run dev
 ```
 
-✅ **C'est tout !** L'application est accessible sur :
-- 🌐 **Application web** : http://localhost
-- ⚙️ **NocoDB (admin)** : http://localhost:8080
+L'application est accessible sur http://localhost:5173
 
 ---
 
-## 📖 Configuration Initiale
+## Configuration
 
-### 1. Configurer NocoDB
+### Variables d'environnement
 
-Accédez à http://localhost:8080 et :
+Creez un fichier `.env` dans `react-ionic-app/` :
 
-1. **Créez un compte administrateur**
-2. **Créez une nouvelle base de données**
-3. **Créez les 3 tables nécessaires** :
+```env
+VITE_NOCODB_BASE_URL=https://votre-worker.workers.dev
+VITE_NOCODB_API_TOKEN=votre-token-api
+```
 
-#### Table `Binomes` (Utilisateurs)
+### Structure NocoDB
+
+Creez 3 tables dans votre base NocoDB :
+
+#### Table `Binomes`
 | Colonne | Type | Description |
 |---------|------|-------------|
-| `id` | Auto Number | Clé primaire |
-| `binome_name` | Single Line Text | Nom du binôme |
-| `username` | Single Line Text | Identifiant de connexion (unique) |
-| `password` | Single Line Text | Mot de passe |
-| `is_admin` | Checkbox | Droits administrateur (default: false) |
+| username | Text | Identifiant unique |
+| password | Text | Mot de passe |
+| binome_name | Text | Nom d'affichage |
+| assigned_zone | Text | Zone attribuee |
+| is_admin | Checkbox | Droits admin |
 
 #### Table `Distributions`
 | Colonne | Type | Description |
 |---------|------|-------------|
-| `id` | Auto Number | Clé primaire |
-| `binome_id` | Number | ID du binôme (Foreign Key) |
-| `binome_name` | Single Line Text | Nom du binôme |
-| `address` | Single Line Text | Adresse complète |
-| `lat` | Decimal | Latitude GPS |
-| `lng` | Decimal | Longitude GPS |
-| `status` | Single Select | effectue, repasser, refus |
-| `amount` | Currency | Montant en € |
-| `payment_method` | Single Select | especes, cheques |
-| `notes` | Long Text | Notes et commentaires |
-| `createdAt` | DateTime | Date création (auto) |
-| `updatedAt` | DateTime | Date modification (auto) |
+| address | Text | Adresse complete |
+| lat | Decimal | Latitude |
+| lng | Decimal | Longitude |
+| status | Select | effectue, repasser, refus |
+| amount | Number | Montant en euros |
+| payment | Text | Mode de paiement |
+| binome_id | Text | Username du binome |
+| notes | Long Text | Commentaires |
 
-#### Table `Zones` (Optionnel)
+#### Table `Zones`
 | Colonne | Type | Description |
 |---------|------|-------------|
-| `id` | Auto Number | Clé primaire |
-| `binome_id` | Number | ID du binôme |
-| `name` | Single Line Text | Nom de la zone |
-| `geojson` | Long Text | Données GeoJSON |
-| `color` | Single Line Text | Couleur hexadécimale |
-| `createdAt` | DateTime | Date création |
-
-### 2. Générer le Token API
-
-Dans NocoDB :
-1. Allez dans **Settings** (roue dentée)
-2. Cliquez sur **API Tokens**
-3. Créez un nouveau token
-4. **Copiez le token**
-
-### 3. Configurer l'Application
-
-Éditez le fichier `config/nocodb-config.js` :
-
-```javascript
-const NOCODB_CONFIG = {
-    baseUrl: 'http://localhost:8080',  // URL de NocoDB
-    apiToken: 'COLLEZ_VOTRE_TOKEN_ICI',  // Token généré
-    projectId: null,  // Auto-détecté
-    tables: {
-        distributions: 'Distributions',
-        zones: 'Zones',
-        binomes: 'Binomes'
-    }
-};
-```
-
-### 4. Redémarrer l'application
-
-```bash
-make restart
-```
-
-🎉 **Votre application est prête !**
+| name | Text | Nom de la zone |
+| geojson | Long Text | Geometrie GeoJSON |
+| color | Text | Couleur hex |
+| binome_id | Text | Username du binome |
+| binome_name | Text | Nom du binome |
 
 ---
 
-## 🎮 Utilisation
+## Cloudflare Worker
 
-### Interface Principale
+Le dossier `cloudflare-worker/` contient un proxy pour securiser les appels API NocoDB :
 
-L'interface utilise une **barre de navigation en bas** avec 4 onglets :
+```bash
+cd cloudflare-worker
+npx wrangler deploy
+```
 
-| Icône | Onglet | Description |
-|-------|--------|-------------|
-| ➕ | **Ajouter** | Ouvrir le formulaire d'ajout de distribution |
-| 🗺️ | **Carte** | Afficher la carte interactive (par défaut) |
-| 📋 | **Liste** | Voir toutes les distributions avec filtres |
-| 📊 | **Stats** | Dashboard statistiques et graphiques |
-
-### Ajouter une Distribution
-
-1. Cliquez sur le bouton **➕ Ajouter**
-2. **Mode automatique** : Recherchez une adresse (la géolocalisation se fait automatiquement)
-3. **Mode manuel** : Saisissez les coordonnées GPS manuellement
-4. Sélectionnez le **statut** (Effectué, À repasser, Refus)
-5. Indiquez le **montant** et le **moyen de paiement**
-6. Ajoutez des **notes** si nécessaire
-7. Cliquez sur **Enregistrer**
-
-### Filtrer les Distributions
-
-Dans l'onglet **📋 Liste** :
-- Filtrez par **statut** (Toutes, Effectué, À repasser, Refus)
-- Filtrez par **date** (Du / Au)
-- **Recherchez** par adresse
-
-### Consulter les Statistiques
-
-Dans l'onglet **📊 Stats** :
-- Visualisez les **indicateurs clés** (totaux, taux de réussite)
-- Analysez les **graphiques** (répartition, évolution)
-- Consultez les **statistiques détaillées**
+Configurez les secrets dans Cloudflare :
+- `NOCODB_BASE_URL` : URL de votre instance NocoDB
+- `NOCODB_API_TOKEN` : Token API NocoDB
 
 ---
 
-## 🛠️ Commandes Utiles
-
-Le projet inclut un **Makefile** pour simplifier les opérations courantes :
+## Build Mobile (Android)
 
 ```bash
-make help          # Afficher toutes les commandes disponibles
-make start         # Démarrer les services
-make stop          # Arrêter les services
-make restart       # Redémarrer les services
-make logs          # Voir les logs en temps réel
-make status        # Afficher le statut des services
-make backup        # Sauvegarder la base de données
-make restore       # Restaurer une sauvegarde (FILE=backup.sql)
-make update        # Mettre à jour les images et redémarrer
-make clean         # Nettoyer les conteneurs inutilisés
+cd react-ionic-app
+
+# Build de production
+npm run build
+
+# Synchroniser avec Capacitor
+npx cap sync
+
+# Ouvrir dans Android Studio
+npx cap open android
 ```
 
-### Exemples d'utilisation
+Ou pour generer l'APK directement :
 
 ```bash
-# Voir les logs de l'application
-make logs-webapp
-
-# Sauvegarder la base de données
-make backup
-
-# Restaurer une sauvegarde
-make restore FILE=backups/backup-20231215.sql
-
-# Réinitialiser complètement (⚠️ supprime les données)
-make clean-all
+cd android
+./gradlew assembleDebug
 ```
+
+L'APK sera dans `android/app/build/outputs/apk/debug/`
 
 ---
 
-## 🏗️ Architecture
-
-### Stack Technique
-
-| Composant | Technologie | Version |
-|-----------|-------------|---------|
-| **Frontend** | HTML5, CSS3, JavaScript (Vanilla) | - |
-| **Cartographie** | Leaflet | 1.9.4 |
-| **Outils dessin** | Leaflet Draw | 1.0.4 |
-| **Graphiques** | Chart.js | 4.4.1 |
-| **Icônes** | Lucide Icons | Latest |
-| **Backend** | NocoDB | Latest |
-| **Base de données** | PostgreSQL | 15 |
-| **Serveur web** | Nginx | Alpine |
-| **Conteneurisation** | Docker & Docker Compose | - |
-
-### Schéma d'Architecture
-
-```
-┌──────────────────┐
-│   Utilisateur    │
-│   (Navigateur)   │
-└────────┬─────────┘
-         │ HTTP:80
-         │
-┌────────▼─────────┐
-│  Nginx (webapp)  │
-│   HTML/CSS/JS    │
-└────────┬─────────┘
-         │ HTTP:8080
-         │
-┌────────▼─────────┐
-│     NocoDB       │
-│   (API REST)     │
-└────────┬─────────┘
-         │ PostgreSQL:5432
-         │
-┌────────▼─────────┐
-│   PostgreSQL     │
-│  (Persistance)   │
-└──────────────────┘
-```
-
-### Structure du Projet
+## Structure du Projet
 
 ```
 distribution_calendriers_pompiers/
-├── 📄 index.html              # Page principale (racine pour GitHub Pages)
-├── 📁 assets/                 # Assets de l'application
-│   ├── js/
-│   │   ├── app.js             # Logique application (3000+ lignes)
-│   │   ├── api-proxy.js       # Proxy API
-│   │   └── config-adapter.js  # Adaptateur de configuration
-│   └── css/
-│       └── style.css          # Styles CSS (1900+ lignes)
-├── 📁 config/                 # Configuration
-│   ├── config.example.js      # Template de configuration
-│   ├── config.js              # Configuration locale (ignoré par git)
-│   └── nocodb-config.js       # Configuration NocoDB (ignoré par git)
-├── 📁 docs/                   # Documentation
-│   ├── guides/                # Guides de déploiement
-│   │   ├── DEPLOYMENT.md
-│   │   ├── DEPLOY_GITHUB_PAGES.md
-│   │   └── QUICKSTART_GITHUB_PAGES.md
-│   └── archive/               # Anciens fichiers archivés
-├── 📁 cloudflare-worker/      # Worker Cloudflare pour CORS
-├── 🐳 docker-compose.yml      # Configuration Docker
-├── 🌐 nginx.conf              # Configuration Nginx
-├── 🔧 Makefile                # Commandes automatisées
-├── 📋 .env.example            # Template variables d'environnement
-├── 🚫 .gitignore              # Exclusions Git
-├── 📖 README.md               # Ce fichier
-├── 📜 CONTRIBUTING.md         # Guide de contribution
-└── 📜 LICENSE                 # Licence du projet
+├── react-ionic-app/          # Application principale
+│   ├── src/
+│   │   ├── components/       # Composants reutilisables
+│   │   ├── pages/            # Pages de l'application
+│   │   ├── stores/           # State management (Zustand)
+│   │   ├── services/         # API et storage
+│   │   ├── router/           # Configuration routes
+│   │   └── theme/            # Styles et theming
+│   ├── android/              # Projet Android (Capacitor)
+│   └── dist/                 # Build de production
+├── cloudflare-worker/        # Proxy API Cloudflare
+├── LICENSE
+└── README.md
 ```
 
 ---
 
-## 🌐 Déploiement en Production
+## Utilisation
 
-### Sur un VPS (Recommandé)
+### Connexion
+1. Connectez-vous avec vos identifiants binome
+2. Les administrateurs ont acces a toutes les zones et fonctionnalites
 
-```bash
-# 1. Installer Docker sur le serveur
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
+### Carte
+- Visualisez les distributions sur la carte
+- Cliquez sur un marqueur pour voir les details
+- Utilisez le bouton de geolocalisation pour centrer sur votre position
 
-# 2. Cloner et configurer
-git clone https://github.com/votre-username/distribution_calendriers_pompiers.git
-cd distribution_calendriers_pompiers
-cp .env.example .env
-nano .env  # Modifiez les mots de passe
+### Ajouter une distribution
+1. Cliquez sur le bouton +
+2. Recherchez une adresse ou utilisez la position actuelle
+3. Selectionnez le statut et entrez les informations
+4. Enregistrez
 
-# 3. Démarrer
-make start
-```
-
-### Avec HTTPS (Caddy)
-
-Pour activer HTTPS automatiquement avec Let's Encrypt, ajoutez Caddy au `docker-compose.yml` :
-
-```yaml
-caddy:
-  image: caddy:2-alpine
-  restart: unless-stopped
-  ports:
-    - "443:443"
-    - "80:80"
-  volumes:
-    - ./Caddyfile:/etc/caddy/Caddyfile
-    - caddy_data:/data
-  networks:
-    - calendriers_network
-```
-
-Créez un `Caddyfile` :
-
-```
-votre-domaine.com {
-    reverse_proxy webapp:80
-}
-```
-
-📖 **Guide complet** : Voir [DEPLOYMENT.md](DEPLOYMENT.md)
+### Gestion des zones (Admin)
+1. Activez le mode dessin sur la carte
+2. Dessinez une zone (polygone ou rectangle)
+3. Nommez la zone
+4. Assignez un binome dans la page d'administration
 
 ---
 
-## 🔒 Sécurité
+## Contribution
 
-### Bonnes Pratiques
+Les contributions sont les bienvenues :
 
-- ✅ **Changez TOUS les mots de passe** dans `.env` avant de déployer
-- ✅ **Utilisez HTTPS** en production (Caddy, Traefik, Let's Encrypt)
-- ✅ **Configurez un firewall** (UFW, iptables)
-- ✅ **Ne commitez jamais** `.env` ou `config/nocodb-config.js` (ils sont dans `.gitignore`)
-- ✅ **Effectuez des backups réguliers** (automatisables avec cron)
-- ✅ **Mettez à jour les images Docker** régulièrement
-
-### Sauvegardes Automatiques
-
-```bash
-# Ajouter au crontab
-crontab -e
-
-# Sauvegarde quotidienne à 2h du matin
-0 2 * * * cd /chemin/vers/projet && make backup
-```
+1. Forkez le projet
+2. Creez une branche (`git checkout -b feature/nouvelle-fonctionnalite`)
+3. Committez vos changements (`git commit -m 'Ajout nouvelle fonctionnalite'`)
+4. Pushez (`git push origin feature/nouvelle-fonctionnalite`)
+5. Ouvrez une Pull Request
 
 ---
 
-## 🤝 Contribution
+## License
 
-Les contributions sont les bienvenues ! Voici comment contribuer :
-
-1. **Forkez** le projet
-2. **Créez** une branche feature (`git checkout -b feature/AmazingFeature`)
-3. **Committez** vos changements (`git commit -m 'Add: Amazing feature'`)
-4. **Pushez** vers la branche (`git push origin feature/AmazingFeature`)
-5. **Ouvrez** une Pull Request
-
-### Convention de commits
-
-- `Add:` Nouvelle fonctionnalité
-- `Fix:` Correction de bug
-- `Update:` Mise à jour de fonctionnalité existante
-- `Docs:` Documentation
-- `Style:` Formatage, CSS
-- `Refactor:` Refactorisation de code
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de details.
 
 ---
 
-## 📄 License
-
-Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
-
-```
-MIT License - Copyright (c) 2024
-
-Vous êtes libre d'utiliser, modifier et distribuer ce logiciel.
-```
-
----
-
-## 🙏 Remerciements
-
-Un grand merci aux projets open-source suivants :
-
-- [Leaflet](https://leafletjs.com/) - Bibliothèque de cartographie
-- [NocoDB](https://nocodb.com/) - Backend no-code
-- [Chart.js](https://www.chartjs.org/) - Graphiques interactifs
-- [Lucide Icons](https://lucide.dev/) - Icônes SVG modernes
-- [OpenStreetMap](https://www.openstreetmap.org/) - Données cartographiques
-- [Docker](https://www.docker.com/) - Conteneurisation
-
----
-
-## 📞 Support
-
-Besoin d'aide ? Plusieurs options s'offrent à vous :
-
-- 📖 **Documentation** : Consultez [DEPLOYMENT.md](DEPLOYMENT.md) pour le guide complet
-- 🐛 **Bug report** : [Ouvrir une issue](https://github.com/votre-username/distribution_calendriers_pompiers/issues)
-- 💬 **Discussions** : [GitHub Discussions](https://github.com/votre-username/distribution_calendriers_pompiers/discussions)
-- 📧 **Email** : support@example.com
-
----
-
-## 🎯 Roadmap
-
-### Version actuelle : 2.0
-
-**Fonctionnalités prévues** :
-
-- [ ] Mode hors-ligne complet (Service Worker)
-- [ ] Notifications push pour les distributions
-- [ ] Export PDF des statistiques
-- [ ] Application mobile (PWA)
-- [ ] Mode collaboratif temps réel (WebSockets)
-- [ ] Système de rapports automatiques
-- [ ] Intégration calendrier (Google Calendar, Outlook)
-- [ ] Multi-langues (i18n)
-
----
-
-## ⭐ Showcase
-
-Si vous utilisez cette application, n'hésitez pas à :
-- ⭐ **Donner une étoile** sur GitHub
-- 📸 Partager vos **screenshots**
-- 💬 Laisser un **témoignage**
-
----
-
-<div align="center">
-
-**Développé avec ❤️ pour faciliter la distribution des calendriers des pompiers** 🚒
-
-**Bonne distribution !** 📅
-
-[![Star on GitHub](https://img.shields.io/github/stars/votre-username/distribution_calendriers_pompiers?style=social)](https://github.com/votre-username/distribution_calendriers_pompiers)
-
-</div>
+Developpe pour faciliter la distribution des calendriers des pompiers.

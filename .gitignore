@@ -1,16 +1,7 @@
-# Configuration files with sensitive data
-config/nocodb-config.js  # Contient le token API NocoDB - NE JAMAIS COMMITER
+# Environment files (contiennent des secrets)
 .env
-
-# Note: config/config.js peut être commité car il contient seulement l'URL du worker Cloudflare (publique)
-
-# Docker
-.dockerignore
-
-# Backups
-backups/
-*.sql
-*.bak
+.env.local
+.env.*.local
 
 # OS files
 .DS_Store
@@ -33,15 +24,6 @@ logs/
 *.tmp
 *.temp
 
-# Node modules (si jamais utilisé)
-node_modules/
-package-lock.json
-
-# Python (si jamais utilisé)
-__pycache__/
-*.py[cod]
-venv/
-env/
-
-# Archives
-docs/archive/
+# Backups
+backups/
+*.bak

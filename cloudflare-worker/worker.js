@@ -10,9 +10,55 @@
  * - Optional: NOCODB_PROJECT_ID
  */
 
-// CORS headers pour autoriser les requêtes depuis GitHub Pages
+/**
+ * Domaines autorisés pour CORS
+ * Ajoutez vos domaines ici
+ */
+const ALLOWED_ORIGINS = [
+  'https://votre-username.github.io',
+  'https://votre-domaine.com',
+  'http://localhost:3000',
+  'http://localhost:5173',  // Vite dev server
+  'http://localhost:8080',
+  'http://127.0.0.1:5500', // Live Server VSCode
+  'http://127.0.0.1:5173', // Vite dev server alt
+  'capacitor://localhost',  // Capacitor Android
+  'ionic://localhost',      // Ionic
+];
+
+/**
+ * Obtient les headers CORS en fonction de l'origine
+ * @param {Request} request - La requête entrante
+ * @returns {Object} Headers CORS
+ */
+function getCorsHeaders(request) {
+  const origin = request.headers.get('Origin') || '';
+
+  // Vérifier si l'origine est autorisée
+  const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+    if (allowed.includes('*')) {
+      // Wildcard matching
+      const pattern = allowed.replace('*', '.*');
+      return new RegExp(`^${pattern}$`).test(origin);
+    }
+    return origin === allowed || origin.startsWith(allowed);
+  });
+
+  // En développement, autoriser toutes les origines si la liste est vide
+  const allowedOrigin = isAllowed ? origin : (ALLOWED_ORIGINS.length === 0 ? '*' : ALLOWED_ORIGINS[0]);
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, xc-token',
+    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
+// CORS headers (conservé pour compatibilité)
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // À restreindre à votre domaine GitHub Pages en production
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, xc-token',
   'Access-Control-Max-Age': '86400',
@@ -21,7 +67,7 @@ const corsHeaders = {
 // Gérer les requêtes OPTIONS (preflight CORS)
 function handleOptions(request) {
   return new Response(null, {
-    headers: corsHeaders
+    headers: getCorsHeaders(request)
   });
 }
 
@@ -80,11 +126,12 @@ export default {
       const responseBody = await nocodbResponse.text();
 
       // Créer la réponse avec les headers CORS
+      const dynamicCorsHeaders = getCorsHeaders(request);
       const response = new Response(responseBody, {
         status: nocodbResponse.status,
         statusText: nocodbResponse.statusText,
         headers: {
-          ...corsHeaders,
+          ...dynamicCorsHeaders,
           'Content-Type': nocodbResponse.headers.get('Content-Type') || 'application/json'
         }
       });
@@ -101,7 +148,7 @@ export default {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          ...corsHeaders
+          ...getCorsHeaders(request)
         }
       });
     }

@@ -1,0 +1,211 @@
+/* Styles pour la carte Leaflet */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+}
+
+/* Fix pour Ionic + Leaflet */
+.ion-page {
+  contain: none !important;
+}
+
+/* Login page styles */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 20px;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-header ion-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.login-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.login-header p {
+  color: var(--ion-color-medium);
+  margin: 0;
+}
+
+.login-form {
+  width: 100%;
+  max-width: 400px;
+}
+
+.error-message {
+  text-align: center;
+  margin: 16px 0;
+}
+
+.demo-credentials {
+  text-align: center;
+  margin-top: 24px;
+}
+
+/* Map page styles */
+.map-container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+}
+
+.map-fab {
+  margin-bottom: 60px;
+}
+
+/* Stats page styles */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.stat-card {
+  border-radius: 12px;
+  padding: 16px;
+  color: white;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+.charts-section {
+  padding: 16px;
+}
+
+.chart-container {
+  max-height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* List page styles */
+.quick-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+}
+
+.status-chip {
+  font-size: 12px;
+}
+
+.distribution-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+}
+
+.distribution-address {
+  font-weight: 500;
+}
+
+.distribution-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.distribution-notes {
+  font-size: 12px;
+  color: var(--ion-color-medium);
+  margin-top: 4px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--ion-color-medium);
+}
+
+.empty-state ion-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+/* Custom marker styles */
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+/* Modal styles */
+.modal-form {
+  padding: 16px;
+}
+
+.form-section {
+  margin-bottom: 16px;
+}
+
+.form-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ion-color-medium);
+  margin-bottom: 8px;
+}
+
+/* Leaflet Draw styles */
+.leaflet-draw-toolbar a {
+  background-color: white;
+}
+
+.leaflet-draw-actions a {
+  background-color: #f4f4f4;
+}
+
+/* Zone delete button in popup */
+.zone-delete-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  width: 100%;
+}
+
+.zone-delete-btn:hover {
+  background: #dc2626;
+}
+
+/* Draw mode indicator */
+.draw-mode-active .leaflet-container {
+  cursor: crosshair;
+}
