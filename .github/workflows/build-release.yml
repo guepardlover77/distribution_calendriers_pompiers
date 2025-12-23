@@ -11,6 +11,7 @@ on:
       - 'PLAN_ACTION_MARKETING.md'
       - 'PITCH_DECK.md'
       - 'TARIFICATION_B2B.md'
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '20'
