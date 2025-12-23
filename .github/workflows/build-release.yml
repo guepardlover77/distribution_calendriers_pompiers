@@ -53,7 +53,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
-          cache: 'gradle'
+          # Cache disabled - android/ folder is gitignored and generated during CI
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -68,6 +68,10 @@ jobs:
         env:
           VITE_NOCODB_BASE_URL: ${{ secrets.VITE_NOCODB_BASE_URL }}
           VITE_NOCODB_API_TOKEN: ${{ secrets.VITE_NOCODB_API_TOKEN }}
+
+      - name: Add Android platform
+        working-directory: react-ionic-app
+        run: npx cap add android
 
       - name: Sync Capacitor
         working-directory: react-ionic-app
