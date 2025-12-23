@@ -5,16 +5,23 @@ import {
   IonToolbar,
   IonTitle,
   IonContent,
-  IonList,
-  IonListHeader,
-  IonItem,
-  IonLabel,
-  IonNote,
   IonCard,
   IonCardHeader,
   IonCardTitle,
-  IonCardContent
+  IonCardContent,
+  IonIcon,
+  IonProgressBar
 } from '@ionic/react'
+import {
+  documentTextOutline,
+  checkmarkCircleOutline,
+  refreshOutline,
+  closeCircleOutline,
+  homeOutline,
+  cashOutline,
+  trendingUpOutline,
+  walletOutline
+} from 'ionicons/icons'
 import { Doughnut, Bar } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -140,85 +147,99 @@ const Stats: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar color="primary">
           <IonTitle>Statistiques</IonTitle>
         </IonToolbar>
       </IonHeader>
 
-      <IonContent>
-        {/* Stats cards */}
-        <div className="stats-grid">
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#128203;</div>
-            <div className="stat-value">{currentStats.total}</div>
-            <div className="stat-label">Distributions</div>
+      <IonContent className="stats-content">
+        {/* Hero section with total amount */}
+        <div className="stats-hero">
+          <div className="stats-hero-icon">
+            <IonIcon icon={cashOutline} />
           </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#9989;</div>
-            <div className="stat-value">{currentStats.effectue}</div>
-            <div className="stat-label">Effectues</div>
-          </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#128260;</div>
-            <div className="stat-value">{currentStats.repasser}</div>
-            <div className="stat-label">A repasser</div>
-          </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#10060;</div>
-            <div className="stat-value">{currentStats.refus}</div>
-            <div className="stat-label">Refus</div>
-          </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#127968;</div>
-            <div className="stat-value">{currentStats.maison_vide}</div>
-            <div className="stat-label">Maison vide</div>
+          <div className="stats-hero-amount">{currentStats.totalAmount.toFixed(2)} EUR</div>
+          <div className="stats-hero-label">Montant total collecte</div>
+          <div className="stats-hero-meta">
+            <span className="stats-hero-meta-item">
+              <IonIcon icon={trendingUpOutline} />
+              {currentStats.successRate}% de reussite
+            </span>
+            <span className="stats-hero-meta-item">
+              <IonIcon icon={walletOutline} />
+              {averageAmount} EUR / distribution
+            </span>
           </div>
         </div>
 
-        {/* Detailed stats */}
-        <IonList>
-          <IonListHeader>
-            <IonLabel>Details</IonLabel>
-          </IonListHeader>
+        {/* Progress bar */}
+        <div className="stats-progress-section">
+          <div className="stats-progress-header">
+            <span>Progression</span>
+            <span>{currentStats.effectue} / {currentStats.total}</span>
+          </div>
+          <IonProgressBar
+            value={currentStats.total > 0 ? currentStats.effectue / currentStats.total : 0}
+            color="success"
+          />
+        </div>
 
-          <IonItem>
-            <IonLabel>
-              <h3>Montant total</h3>
-              <p>Somme collectee</p>
-            </IonLabel>
-            <IonNote slot="end" color="primary">
-              {currentStats.totalAmount.toFixed(2)} EUR
-            </IonNote>
-          </IonItem>
+        {/* Stats cards */}
+        <div className="stats-grid">
+          <div className="stat-card stat-card-total">
+            <div className="stat-card-icon">
+              <IonIcon icon={documentTextOutline} />
+            </div>
+            <div className="stat-card-content">
+              <div className="stat-value">{currentStats.total}</div>
+              <div className="stat-label">Total</div>
+            </div>
+          </div>
 
-          <IonItem>
-            <IonLabel>
-              <h3>Taux de reussite</h3>
-              <p>Distributions effectuees</p>
-            </IonLabel>
-            <IonNote slot="end" color="success">
-              {currentStats.successRate}%
-            </IonNote>
-          </IonItem>
+          <div className="stat-card stat-card-success">
+            <div className="stat-card-icon">
+              <IonIcon icon={checkmarkCircleOutline} />
+            </div>
+            <div className="stat-card-content">
+              <div className="stat-value">{currentStats.effectue}</div>
+              <div className="stat-label">Effectues</div>
+            </div>
+          </div>
 
-          <IonItem>
-            <IonLabel>
-              <h3>Montant moyen</h3>
-              <p>Par distribution effectuee</p>
-            </IonLabel>
-            <IonNote slot="end">
-              {averageAmount} EUR
-            </IonNote>
-          </IonItem>
-        </IonList>
+          <div className="stat-card stat-card-warning">
+            <div className="stat-card-icon">
+              <IonIcon icon={refreshOutline} />
+            </div>
+            <div className="stat-card-content">
+              <div className="stat-value">{currentStats.repasser}</div>
+              <div className="stat-label">A repasser</div>
+            </div>
+          </div>
+
+          <div className="stat-card stat-card-danger">
+            <div className="stat-card-icon">
+              <IonIcon icon={closeCircleOutline} />
+            </div>
+            <div className="stat-card-content">
+              <div className="stat-value">{currentStats.refus}</div>
+              <div className="stat-label">Refus</div>
+            </div>
+          </div>
+
+          <div className="stat-card stat-card-neutral">
+            <div className="stat-card-icon">
+              <IonIcon icon={homeOutline} />
+            </div>
+            <div className="stat-card-content">
+              <div className="stat-value">{currentStats.maison_vide}</div>
+              <div className="stat-label">Maison vide</div>
+            </div>
+          </div>
+        </div>
 
         {/* Charts */}
         <div className="charts-section">
-          <IonCard>
+          <IonCard className="chart-card">
             <IonCardHeader>
               <IonCardTitle>Repartition par statut</IonCardTitle>
             </IonCardHeader>
@@ -230,7 +251,7 @@ const Stats: React.FC = () => {
           </IonCard>
 
           {paymentChartData.labels.length > 0 && (
-            <IonCard>
+            <IonCard className="chart-card">
               <IonCardHeader>
                 <IonCardTitle>Moyens de paiement</IonCardTitle>
               </IonCardHeader>
@@ -242,7 +263,7 @@ const Stats: React.FC = () => {
             </IonCard>
           )}
 
-          <IonCard>
+          <IonCard className="chart-card">
             <IonCardHeader>
               <IonCardTitle>Montants collectes par statut</IonCardTitle>
             </IonCardHeader>
