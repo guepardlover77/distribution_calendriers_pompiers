@@ -18,6 +18,7 @@ interface Stats {
   effectue: number
   repasser: number
   refus: number
+  maison_vide: number
   totalAmount: number
   successRate: string
 }
@@ -119,6 +120,7 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
       effectue: filtered.filter(d => d.status === 'effectue').length,
       repasser: filtered.filter(d => d.status === 'repasser').length,
       refus: filtered.filter(d => d.status === 'refus').length,
+      maison_vide: filtered.filter(d => d.status === 'maison_vide').length,
       totalAmount: filtered.reduce((sum, d) => sum + (parseFloat(String(d.amount)) || 0), 0),
       successRate: filtered.length > 0
         ? ((filtered.filter(d => d.status === 'effectue').length / filtered.length) * 100).toFixed(1)
@@ -151,8 +153,29 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   fetchAll: async () => {
     set({ loading: true })
     try {
-      const data = await apiService.getDistributions<Distribution>()
-      set({ items: data || [] })
+      const rawData = await apiService.getDistributions<Record<string, unknown>>()
+      console.log('[DistributionsStore] Raw data from API:', rawData?.length, 'items')
+
+      // Mapper les donnees NocoDB vers le format local
+      const data: Distribution[] = (rawData || []).map(item => ({
+        id: String(item.Id || item.id || item.localId || Date.now()),
+        address: String(item.address || ''),
+        lat: Number(item.lat) || 0,
+        lng: Number(item.lng) || 0,
+        status: (item.status as Distribution['status']) || 'effectue',
+        amount: Number(item.amount) || 0,
+        payment: item.payment as string | undefined,
+        payment_method: item.payment_method as string | undefined,
+        notes: item.notes as string | undefined,
+        binome_id: String(item.binome_id || ''),
+        recipient_name: item.recipient_name as string | undefined,
+        createdAt: String(item.createdAt || item.created_at || new Date().toISOString()),
+        updatedAt: String(item.updatedAt || item.updated_at || new Date().toISOString()),
+        localId: item.localId as string | undefined
+      }))
+
+      console.log('[DistributionsStore] Mapped data:', data.length, 'items')
+      set({ items: data })
       await get().saveToStorage()
     } catch (error) {
       console.error('[DistributionsStore] Erreur fetch:', error)

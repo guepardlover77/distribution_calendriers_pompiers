@@ -15,15 +15,17 @@
  * Ajoutez vos domaines ici
  */
 const ALLOWED_ORIGINS = [
-  'https://votre-username.github.io',
-  'https://votre-domaine.com',
+  'https://guepardlover77.github.io',
   'http://localhost:3000',
   'http://localhost:5173',  // Vite dev server
   'http://localhost:8080',
+  'http://localhost',       // Capacitor Android
   'http://127.0.0.1:5500', // Live Server VSCode
   'http://127.0.0.1:5173', // Vite dev server alt
   'capacitor://localhost',  // Capacitor Android
   'ionic://localhost',      // Ionic
+  'https://localhost',      // Capacitor iOS
+  'file://',                // Cordova/Capacitor file access
 ];
 
 /**
@@ -33,6 +35,16 @@ const ALLOWED_ORIGINS = [
  */
 function getCorsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
+
+  // Si pas d'origine (cas mobile/Capacitor), autoriser toutes les origines
+  if (!origin) {
+    return {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, xc-token',
+      'Access-Control-Max-Age': '86400',
+    };
+  }
 
   // Vérifier si l'origine est autorisée
   const isAllowed = ALLOWED_ORIGINS.some(allowed => {
@@ -44,15 +56,21 @@ function getCorsHeaders(request) {
     return origin === allowed || origin.startsWith(allowed);
   });
 
-  // En développement, autoriser toutes les origines si la liste est vide
-  const allowedOrigin = isAllowed ? origin : (ALLOWED_ORIGINS.length === 0 ? '*' : ALLOWED_ORIGINS[0]);
+  // Pour les apps mobiles, autoriser l'origine meme si pas dans la liste
+  const isMobileApp = origin.startsWith('capacitor://') ||
+                      origin.startsWith('ionic://') ||
+                      origin.startsWith('file://') ||
+                      origin === 'http://localhost' ||
+                      origin === 'https://localhost';
+
+  const allowedOrigin = (isAllowed || isMobileApp) ? origin : '*';
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, xc-token',
     'Access-Control-Max-Age': '86400',
-    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Credentials': allowedOrigin !== '*' ? 'true' : 'false',
   };
 }
 

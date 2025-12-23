@@ -37,19 +37,21 @@ const List: React.FC = () => {
   const currentStats = stats()
 
   const getStatusColor = (status: string) => {
-    const colors: Record<string, 'success' | 'warning' | 'danger' | 'medium'> = {
+    const colors: Record<string, 'success' | 'warning' | 'danger' | 'medium' | 'tertiary'> = {
       effectue: 'success',
       repasser: 'warning',
-      refus: 'danger'
+      refus: 'danger',
+      maison_vide: 'medium'
     }
-    return colors[status] || 'medium'
+    return colors[status] || 'tertiary'
   }
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       effectue: 'Effectue',
       repasser: 'A repasser',
-      refus: 'Refus'
+      refus: 'Refus',
+      maison_vide: 'Maison vide'
     }
     return labels[status] || status
   }
@@ -89,7 +91,7 @@ const List: React.FC = () => {
             onIonInput={(e) => handleSearch(e.detail.value || '')}
           />
 
-          <IonSegment value={selectedStatus} onIonChange={(e) => handleStatusChange(e.detail.value as string)}>
+          <IonSegment value={selectedStatus} onIonChange={(e) => handleStatusChange(e.detail.value as string)} scrollable>
             <IonSegmentButton value="all">
               <IonLabel>Toutes</IonLabel>
             </IonSegmentButton>
@@ -101,6 +103,9 @@ const List: React.FC = () => {
             </IonSegmentButton>
             <IonSegmentButton value="refus">
               <IonLabel>Refus</IonLabel>
+            </IonSegmentButton>
+            <IonSegmentButton value="maison_vide">
+              <IonLabel>Vide</IonLabel>
             </IonSegmentButton>
           </IonSegment>
         </div>

@@ -32,7 +32,15 @@
       "Bash(npx wrangler secret list)",
       "Bash(npx tsc:*)",
       "Bash(rm:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(./gradlew.bat assembleDebug)",
+      "Bash(echo:*)",
+      "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/java\" -version)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\" ./gradlew.bat:*)",
+      "Bash(npx wrangler secret:*)",
+      "Bash(curl:*)",
+      "Bash(magick:*)",
+      "Bash(npx @capacitor/assets:*)"
     ]
   },
   "outputStyle": "default"

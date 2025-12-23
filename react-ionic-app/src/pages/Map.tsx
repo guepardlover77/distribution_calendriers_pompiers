@@ -15,9 +15,12 @@ import {
   IonAlert,
   IonChip,
   IonLabel,
-  useIonToast
+  useIonToast,
+  useIonViewDidEnter,
+  useIonViewWillEnter
 } from '@ionic/react'
 import { addOutline, locateOutline, logOutOutline, brushOutline } from 'ionicons/icons'
+import { Geolocation } from '@capacitor/geolocation'
 import L from 'leaflet'
 import 'leaflet-draw'
 import { useAuthStore } from '@/stores/authStore'
@@ -34,7 +37,7 @@ const Map: React.FC = () => {
   const logout = useAuthStore(state => state.logout)
   const isAdmin = useAuthStore(state => state.isAdmin)
   const currentUser = useAuthStore(state => state.currentUser)
-  const loadFromStorage = useDistributionsStore(state => state.loadFromStorage)
+  const fetchAll = useDistributionsStore(state => state.fetchAll)
   const filteredItems = useDistributionsStore(state => state.filteredItems)
 
   // Zones store
@@ -54,20 +57,65 @@ const Map: React.FC = () => {
     geojson?: string
   }>({ isOpen: false })
 
+  // Demander la permission de geolocalisation
+  const requestLocationPermission = async () => {
+    try {
+      const permission = await Geolocation.checkPermissions()
+      console.log('[Map] Current permission status:', permission.location)
+
+      if (permission.location !== 'granted') {
+        const request = await Geolocation.requestPermissions()
+        console.log('[Map] Permission request result:', request.location)
+
+        if (request.location === 'granted') {
+          presentToast({
+            message: 'Permission de localisation accordee',
+            duration: 2000,
+            color: 'success',
+            position: 'top'
+          })
+        }
+      }
+    } catch (error) {
+      console.error('[Map] Error requesting location permission:', error)
+    }
+  }
+
+  // Fix pour l'affichage de la carte - invalidateSize quand la vue est prete
+  useIonViewDidEnter(() => {
+    if (mapRef.current) {
+      // Petit delai pour s'assurer que le conteneur a ses dimensions finales
+      setTimeout(() => {
+        mapRef.current?.invalidateSize()
+      }, 100)
+    }
+
+    // Demander la permission de localisation
+    requestLocationPermission()
+  })
+
+  useIonViewWillEnter(() => {
+    // Rafraichir les donnees quand on revient sur la page
+    fetchAll()
+    fetchZones()
+  })
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       effectue: '#10b981',
       repasser: '#f59e0b',
-      refus: '#ef4444'
+      refus: '#ef4444',
+      maison_vide: '#6b7280'
     }
-    return colors[status] || '#6b7280'
+    return colors[status] || '#9ca3af'
   }
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       effectue: 'Effectue',
       repasser: 'A repasser',
-      refus: 'Refus'
+      refus: 'Refus',
+      maison_vide: 'Maison vide'
     }
     return labels[status] || status
   }
@@ -161,9 +209,9 @@ const Map: React.FC = () => {
 
   // Initialize map
   useEffect(() => {
-    loadFromStorage()
+    fetchAll()
     fetchZones()
-  }, [loadFromStorage, fetchZones])
+  }, [fetchAll, fetchZones])
 
   useEffect(() => {
     if (mapContainerRef.current && !mapRef.current) {
@@ -217,6 +265,16 @@ const Map: React.FC = () => {
       // Initial updates
       updateMarkers()
       updateZonesLayer()
+
+      // Fix pour l'affichage initial - forcer le recalcul des dimensions
+      setTimeout(() => {
+        mapRef.current?.invalidateSize()
+      }, 200)
+
+      // Second appel apres un delai plus long pour les cas ou le conteneur met du temps
+      setTimeout(() => {
+        mapRef.current?.invalidateSize()
+      }, 500)
     }
 
     return () => {
@@ -371,11 +429,25 @@ const Map: React.FC = () => {
 
   const centerOnLocation = async () => {
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000
-        })
+      // Verifier/demander la permission d'abord
+      const permission = await Geolocation.checkPermissions()
+      if (permission.location !== 'granted') {
+        const request = await Geolocation.requestPermissions()
+        if (request.location !== 'granted') {
+          presentToast({
+            message: 'Permission de localisation refusee',
+            duration: 2000,
+            color: 'warning',
+            position: 'top'
+          })
+          return
+        }
+      }
+
+      // Obtenir la position
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
       })
 
       const { latitude, longitude } = position.coords
@@ -388,7 +460,8 @@ const Map: React.FC = () => {
         position: 'top'
       })
 
-    } catch {
+    } catch (error) {
+      console.error('[Map] Geolocation error:', error)
       presentToast({
         message: 'Impossible d\'obtenir votre position',
         duration: 2000,

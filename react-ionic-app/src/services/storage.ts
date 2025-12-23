@@ -26,12 +26,13 @@ export interface Distribution {
   address: string
   lat: number
   lng: number
-  status: 'effectue' | 'repasser' | 'refus'
+  status: 'effectue' | 'repasser' | 'refus' | 'maison_vide'
   amount: number
   payment?: string
   payment_method?: string
   notes?: string
   binome_id: string
+  recipient_name?: string
   createdAt: string
   updatedAt: string
   localId?: string
@@ -40,7 +41,7 @@ export interface Distribution {
 export interface Zone {
   id: string
   name: string
-  binome_username?: string
+  binome_id?: string
 }
 
 class StorageService {

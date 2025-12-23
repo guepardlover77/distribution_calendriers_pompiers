@@ -44,10 +44,10 @@ const Stats: React.FC = () => {
   }, [currentStats])
 
   const statusChartData = useMemo(() => ({
-    labels: ['Effectues', 'A repasser', 'Refus'],
+    labels: ['Effectues', 'A repasser', 'Refus', 'Maison vide'],
     datasets: [{
-      data: [currentStats.effectue, currentStats.repasser, currentStats.refus],
-      backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+      data: [currentStats.effectue, currentStats.repasser, currentStats.refus, currentStats.maison_vide],
+      backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#6b7280'],
       borderWidth: 2,
       borderColor: '#ffffff'
     }]
@@ -90,15 +90,16 @@ const Stats: React.FC = () => {
     }, {})
 
     return {
-      labels: ['Effectues', 'A repasser', 'Refus'],
+      labels: ['Effectues', 'A repasser', 'Refus', 'Maison vide'],
       datasets: [{
         label: 'Montant (EUR)',
         data: [
           amounts.effectue || 0,
           amounts.repasser || 0,
-          amounts.refus || 0
+          amounts.refus || 0,
+          amounts.maison_vide || 0
         ],
-        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#6b7280'],
         borderWidth: 2,
         borderColor: '#ffffff'
       }]
@@ -169,6 +170,12 @@ const Stats: React.FC = () => {
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#10060;</div>
             <div className="stat-value">{currentStats.refus}</div>
             <div className="stat-label">Refus</div>
+          </div>
+
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)' }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#127968;</div>
+            <div className="stat-value">{currentStats.maison_vide}</div>
+            <div className="stat-label">Maison vide</div>
           </div>
         </div>
 
