@@ -164,7 +164,7 @@ const AdminZones: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar color="primary">
+        <IonToolbar>
           <IonButtons slot="start">
             <IonBackButton defaultHref="/tabs/admin" text="Retour" />
           </IonButtons>

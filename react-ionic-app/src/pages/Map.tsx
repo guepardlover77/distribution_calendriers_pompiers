@@ -218,8 +218,8 @@ const Map: React.FC = () => {
       // Create map
       mapRef.current = L.map(mapContainerRef.current).setView([46.603354, 1.888334], 6)
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         maxZoom: 19,
         minZoom: 3
       }).addTo(mapRef.current)
@@ -498,7 +498,7 @@ const Map: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar color="primary">
+        <IonToolbar>
           <IonTitle>Carte</IonTitle>
           <IonButtons slot="start">
             {isAdmin() && (
@@ -520,7 +520,7 @@ const Map: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent fullscreen>
+      <IonContent>
         <div className="map-container">
           <div id="map" ref={mapContainerRef} />
 

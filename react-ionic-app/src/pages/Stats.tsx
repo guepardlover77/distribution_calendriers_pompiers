@@ -147,7 +147,7 @@ const Stats: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar color="primary">
+        <IonToolbar>
           <IonTitle>Statistiques</IonTitle>
         </IonToolbar>
       </IonHeader>
@@ -170,18 +170,6 @@ const Stats: React.FC = () => {
               {averageAmount} EUR / distribution
             </span>
           </div>
-        </div>
-
-        {/* Progress bar */}
-        <div className="stats-progress-section">
-          <div className="stats-progress-header">
-            <span>Progression</span>
-            <span>{currentStats.effectue} / {currentStats.total}</span>
-          </div>
-          <IonProgressBar
-            value={currentStats.total > 0 ? currentStats.effectue / currentStats.total : 0}
-            color="success"
-          />
         </div>
 
         {/* Stats cards */}
@@ -262,17 +250,6 @@ const Stats: React.FC = () => {
               </IonCardContent>
             </IonCard>
           )}
-
-          <IonCard className="chart-card">
-            <IonCardHeader>
-              <IonCardTitle>Montants collectes par statut</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <div className="chart-container">
-                <Bar data={amountChartData} options={barChartOptions} />
-              </div>
-            </IonCardContent>
-          </IonCard>
         </div>
       </IonContent>
     </IonPage>
