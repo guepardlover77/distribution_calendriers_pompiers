@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distribution Calendriers Pompiers - Application de gestion</title>
+    <meta name="description" content="Application mobile et web pour la gestion de la distribution de calendriers des pompiers avec cartographie interactive et synchronisation NocoDB.">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/guepardlover77/distribution_calendriers_pompiers/main/react-ionic-app/icons/icon-192.webp">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #e53935;
+            --primary-dark: #c62828;
+            --secondary: #3880ff;
+            --success: #2dd36f;
+            --warning: #ffc409;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: var(--light);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='rgba(255,255,255,0.05)' d='M50 0L100 50L50 100L0 50Z'/%3E%3C/svg%3E") repeat;
+            background-size: 50px 50px;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero-icon {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto 32px;
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.2);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* Features Section */
+        .section {
+            padding: 80px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--gray);
+            font-size: 1.1rem;
+            margin-bottom: 48px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        .feature-icon.map { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .feature-icon.distribution { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .feature-icon.stats { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .feature-icon.users { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .feature-icon.mobile { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .feature-icon.sync { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--gray);
+            font-size: 0.95rem;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-top: 12px;
+        }
+
+        .feature-list li {
+            padding: 4px 0;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        /* Tech Stack Section */
+        .tech-section {
+            background: white;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .tech-item {
+            text-align: center;
+            padding: 24px;
+            border-radius: 12px;
+            background: var(--light);
+            transition: transform 0.2s ease;
+        }
+
+        .tech-item:hover {
+            transform: scale(1.05);
+        }
+
+        .tech-item img {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+        }
+
+        .tech-item span {
+            display: block;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .tech-item small {
+            color: var(--gray);
+            font-size: 0.8rem;
+        }
+
+        /* Installation Section */
+        .install-section {
+            background: var(--dark);
+            color: white;
+        }
+
+        .install-section .section-title {
+            color: white;
+        }
+
+        .install-section .section-subtitle {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .code-block {
+            background: #0d1117;
+            border-radius: 12px;
+            padding: 24px;
+            overflow-x: auto;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .code-block code {
+            color: #c9d1d9;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        .code-block .comment {
+            color: #8b949e;
+        }
+
+        .code-block .command {
+            color: #79c0ff;
+        }
+
+        .install-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-top: 48px;
+        }
+
+        .install-step {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .install-step h4 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+        }
+
+        .install-step h4 .step-num {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .install-step p {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+        }
+
+        /* Screenshots Section */
+        .screenshots-section {
+            background: linear-gradient(180deg, var(--light) 0%, white 100%);
+        }
+
+        .screenshot-placeholder {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 60px;
+            text-align: center;
+            color: white;
+        }
+
+        .screenshot-placeholder p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Requirements Section */
+        .requirements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .requirement-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+
+        .requirement-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+
+        .requirement-card h4 {
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .requirement-card p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--dark);
+            color: white;
+            padding: 48px 20px;
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: rgba(255,255,255,0.8);
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: white;
+            text-decoration: none;
+        }
+
+        .copyright {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .section {
+                padding: 60px 20px;
+            }
+
+            .section-title {
+                font-size: 1.75rem;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <img src="https://raw.githubusercontent.com/guepardlover77/distribution_calendriers_pompiers/main/react-ionic-app/icons/icon-192.webp" alt="Logo" class="hero-icon">
+        <h1>🚒 Distribution Calendriers Pompiers</h1>
+        <p>Application mobile et web pour la gestion de la distribution de calendriers des pompiers avec cartographie interactive et synchronisation NocoDB.</p>
+        
+        <div class="badges">
+            <span class="badge">React 18</span>
+            <span class="badge">Ionic 8</span>
+            <span class="badge">Capacitor 6</span>
+            <span class="badge">TypeScript</span>
+            <span class="badge">MIT License</span>
+        </div>
+        
+        <div class="cta-buttons">
+            <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers" class="btn btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                Voir sur GitHub
+            </a>
+            <a href="#installation" class="btn btn-secondary">
+                📥 Installation
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="section">
+    <h2 class="section-title">✨ Fonctionnalités</h2>
+    <p class="section-subtitle">Une application complète pour optimiser la distribution des calendriers des pompiers</p>
+    
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon map">🗺️</div>
+            <h3>Cartographie Interactive</h3>
+            <p>Visualisez et gérez les distributions sur une carte en temps réel.</p>
+            <ul class="feature-list">
+                <li>Carte Leaflet + OpenStreetMap</li>
+                <li>Marqueurs par statut</li>
+                <li>Géolocalisation automatique</li>
+                <li>Création de zones par dessin</li>
+            </ul>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon distribution">📋</div>
+            <h3>Gestion des Distributions</h3>
+            <p>Suivez chaque distribution avec précision et efficacité.</p>
+            <ul class="feature-list">
+                <li>Ajout rapide avec géocodage</li>
+                <li>Filtrage par statut et date</li>
+                <li>Historique complet</li>
+                <li>Synchronisation cloud</li>
+            </ul>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon stats">📊</div>
+            <h3>Statistiques</h3>
+            <p>Dashboard complet avec indicateurs clés et graphiques.</p>
+            <ul class="feature-list">
+                <li>Taux de réussite</li>
+                <li>Montants collectés</li>
+                <li>Tendances temporelles</li>
+                <li>Graphiques Chart.js</li>
+            </ul>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon users">👥</div>
+            <h3>Multi-utilisateurs</h3>
+            <p>Gestion des équipes et des zones par binôme.</p>
+            <ul class="feature-list">
+                <li>Authentification sécurisée</li>
+                <li>Gestion par binômes</li>
+                <li>Droits administrateur</li>
+                <li>Zones attribuées</li>
+            </ul>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon mobile">📱</div>
+            <h3>Application Mobile</h3>
+            <p>Interface optimisée pour une utilisation sur le terrain.</p>
+            <ul class="feature-list">
+                <li>Interface Ionic native</li>
+                <li>Build Android avec Capacitor</li>
+                <li>Mode hors-ligne</li>
+                <li>Stockage local</li>
+            </ul>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon sync">☁️</div>
+            <h3>Synchronisation NocoDB</h3>
+            <p>Backend flexible et puissant avec NocoDB.</p>
+            <ul class="feature-list">
+                <li>Base de données cloud</li>
+                <li>API REST automatique</li>
+                <li>Proxy Cloudflare Worker</li>
+                <li>Données sécurisées</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Tech Stack Section -->
+<section class="section tech-section">
+    <h2 class="section-title">🛠️ Stack Technique</h2>
+    <p class="section-subtitle">Technologies modernes et éprouvées pour une application robuste</p>
+    
+    <div class="tech-grid">
+        <div class="tech-item">
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" alt="React">
+            <span>React 18</span>
+            <small>Frontend</small>
+        </div>
+        <div class="tech-item">
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" alt="TypeScript">
+            <span>TypeScript</span>
+            <small>Typage</small>
+        </div>
+        <div class="tech-item">
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ionic/ionic-original.svg" alt="Ionic">
+            <span>Ionic 8</span>
+            <small>UI Framework</small>
+        </div>
+        <div class="tech-item">
+            <img src="https://capacitorjs.com/docs/img/logo-light.png" alt="Capacitor" style="filter: brightness(0.8);">
+            <span>Capacitor 6</span>
+            <small>Mobile</small>
+        </div>
+        <div class="tech-item">
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg" alt="Vite">
+            <span>Vite</span>
+            <small>Build Tool</small>
+        </div>
+        <div class="tech-item">
+            <img src="https://leafletjs.com/docs/images/logo.png" alt="Leaflet">
+            <span>Leaflet</span>
+            <small>Cartographie</small>
+        </div>
+    </div>
+</section>
+
+<!-- Installation Section -->
+<section class="section install-section" id="installation">
+    <h2 class="section-title">🚀 Installation</h2>
+    <p class="section-subtitle">Démarrez rapidement avec ces quelques commandes</p>
+    
+    <div class="code-block">
+        <code>
+<span class="comment"># Cloner le projet</span>
+<span class="command">git clone</span> https://github.com/guepardlover77/distribution_calendriers_pompiers.git
+<span class="command">cd</span> distribution_calendriers_pompiers/react-ionic-app
+
+<span class="comment"># Installer les dépendances</span>
+<span class="command">npm install</span>
+
+<span class="comment"># Configurer l'environnement</span>
+<span class="command">cp</span> .env.example .env
+
+<span class="comment"># Lancer en développement</span>
+<span class="command">npm run dev</span>
+        </code>
+    </div>
+    
+    <p style="text-align: center; color: rgba(255,255,255,0.7);">
+        L'application sera accessible sur <strong>http://localhost:5173</strong>
+    </p>
+    
+    <div class="install-steps">
+        <div class="install-step">
+            <h4><span class="step-num">1</span>Prérequis</h4>
+            <p>Node.js 18+, npm, instance NocoDB configurée</p>
+        </div>
+        <div class="install-step">
+            <h4><span class="step-num">2</span>Configuration</h4>
+            <p>Créez le fichier .env avec vos paramètres NocoDB</p>
+        </div>
+        <div class="install-step">
+            <h4><span class="step-num">3</span>Build Mobile</h4>
+            <p>npm run build && npx cap sync android</p>
+        </div>
+        <div class="install-step">
+            <h4><span class="step-num">4</span>APK Android</h4>
+            <p>Voir le <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers/blob/main/GUIDE-COMPILATION-APK.md" style="color: var(--primary);">guide de compilation</a></p>
+        </div>
+    </div>
+</section>
+
+<!-- Requirements Section -->
+<section class="section">
+    <h2 class="section-title">📋 Prérequis Backend</h2>
+    <p class="section-subtitle">Ce dont vous avez besoin pour faire fonctionner l'application</p>
+    
+    <div class="requirements-grid">
+        <div class="requirement-card">
+            <div class="icon">🗄️</div>
+            <h4>NocoDB</h4>
+            <p>Base de données avec interface no-code. Hébergez-la vous-même ou utilisez le cloud.</p>
+        </div>
+        <div class="requirement-card">
+            <div class="icon">⚡</div>
+            <h4>Cloudflare Worker</h4>
+            <p>Proxy API pour sécuriser les appels vers NocoDB (gratuit).</p>
+        </div>
+        <div class="requirement-card">
+            <div class="icon">📱</div>
+            <h4>Android Studio</h4>
+            <p>Optionnel - nécessaire uniquement pour compiler l'APK mobile.</p>
+        </div>
+        <div class="requirement-card">
+            <div class="icon">🌐</div>
+            <h4>Hébergement Web</h4>
+            <p>Pour la version web - GitHub Pages, Netlify, Vercel...</p>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section" style="text-align: center; padding-top: 40px;">
+    <h2 class="section-title">📖 Documentation</h2>
+    <p class="section-subtitle">Consultez la documentation complète pour plus de détails sur la configuration et l'utilisation.</p>
+    
+    <div class="cta-buttons" style="justify-content: center;">
+        <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers/blob/main/README.md" class="btn" style="background: var(--secondary); color: white;">
+            📚 Lire le README
+        </a>
+        <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers/blob/main/GUIDE-COMPILATION-APK.md" class="btn" style="background: var(--success); color: white;">
+            📲 Guide APK
+        </a>
+        <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers/issues" class="btn" style="background: var(--warning); color: var(--dark);">
+            🐛 Signaler un bug
+        </a>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-links">
+        <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers">GitHub</a>
+        <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers/blob/main/README.md">Documentation</a>
+        <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers/blob/main/LICENSE">Licence MIT</a>
+        <a href="https://github.com/guepardlover77/distribution_calendriers_pompiers/issues">Issues</a>
+    </div>
+    <p class="copyright">
+        © 2024 Distribution Calendriers Pompiers — Développé avec ❤️ pour les pompiers
+    </p>
+</footer>
+
+</body>
+</html>
