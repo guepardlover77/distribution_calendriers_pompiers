@@ -19,7 +19,7 @@ import {
   useIonViewDidEnter,
   useIonViewWillEnter
 } from '@ionic/react'
-import { addOutline, locateOutline, logOutOutline, brushOutline } from 'ionicons/icons'
+import { addOutline, locateOutline, logOutOutline, brushOutline, layersOutline, checkmarkCircle } from 'ionicons/icons'
 import { Geolocation } from '@capacitor/geolocation'
 import L from 'leaflet'
 import 'leaflet-draw'
@@ -30,6 +30,69 @@ import DistributionModal from '@/components/DistributionModal'
 
 // Import leaflet-draw CSS
 import 'leaflet-draw/dist/leaflet.draw.css'
+
+// Map theme configuration
+interface MapTheme {
+  id: string
+  name: string
+  description: string
+  url: string
+  attribution: string
+  preview: string
+}
+
+const MAP_THEMES: MapTheme[] = [
+  {
+    id: 'voyager',
+    name: 'Voyager',
+    description: 'Colore et moderne',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    preview: '#4A90E2'
+  },
+  {
+    id: 'positron',
+    name: 'Positron',
+    description: 'Minimaliste clair',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    preview: '#F5F5F5'
+  },
+  {
+    id: 'dark',
+    name: 'Dark Matter',
+    description: 'Sombre elegant',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    preview: '#2C3E50'
+  },
+  {
+    id: 'osm',
+    name: 'OpenStreetMap',
+    description: 'Classique detaille',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors',
+    preview: '#F2EFE9'
+  },
+  {
+    id: 'terrain',
+    name: 'Terrain',
+    description: 'Relief naturel',
+    url: 'https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png',
+    attribution: '&copy; Stamen Design &copy; OpenStreetMap contributors',
+    preview: '#B8D4A8'
+  },
+  {
+    id: 'toner',
+    name: 'Toner',
+    description: 'Noir et blanc artistique',
+    url: 'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}.png',
+    attribution: '&copy; Stamen Design &copy; OpenStreetMap contributors',
+    preview: '#EEEEEE'
+  }
+]
+
+const THEME_STORAGE_KEY = 'pompiers_map_theme'
 
 const Map: React.FC = () => {
   const history = useHistory()
@@ -48,6 +111,7 @@ const Map: React.FC = () => {
   const markersRef = useRef<Record<string, L.Marker>>({})
   const zonesLayerRef = useRef<L.FeatureGroup | null>(null)
   const drawControlRef = useRef<L.Control.Draw | null>(null)
+  const tileLayerRef = useRef<L.TileLayer | null>(null)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [drawMode, setDrawMode] = useState(false)
@@ -56,6 +120,8 @@ const Map: React.FC = () => {
     layer?: L.Layer
     geojson?: string
   }>({ isOpen: false })
+  const [selectedTheme, setSelectedTheme] = useState<string>('voyager')
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false)
 
   // Demander la permission de geolocalisation
   const requestLocationPermission = async () => {
@@ -218,8 +284,13 @@ const Map: React.FC = () => {
       // Create map
       mapRef.current = L.map(mapContainerRef.current).setView([46.603354, 1.888334], 6)
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      // Charger le thème sauvegardé ou utiliser Voyager par défaut
+      const savedThemeId = localStorage.getItem(THEME_STORAGE_KEY) || 'voyager'
+      setSelectedTheme(savedThemeId)
+      const theme = MAP_THEMES.find(t => t.id === savedThemeId) || MAP_THEMES[0]
+
+      tileLayerRef.current = L.tileLayer(theme.url, {
+        attribution: theme.attribution,
         maxZoom: 19,
         minZoom: 3
       }).addTo(mapRef.current)
@@ -508,6 +579,35 @@ const Map: React.FC = () => {
     }
   }
 
+  const changeMapTheme = useCallback((themeId: string) => {
+    const theme = MAP_THEMES.find(t => t.id === themeId)
+    if (!theme || !mapRef.current) return
+
+    // Retirer l'ancienne tileLayer
+    if (tileLayerRef.current) {
+      mapRef.current.removeLayer(tileLayerRef.current)
+    }
+
+    // Ajouter la nouvelle tileLayer
+    tileLayerRef.current = L.tileLayer(theme.url, {
+      attribution: theme.attribution,
+      maxZoom: 19,
+      minZoom: 3
+    }).addTo(mapRef.current)
+
+    // Sauvegarder la préférence
+    localStorage.setItem(THEME_STORAGE_KEY, themeId)
+    setSelectedTheme(themeId)
+    setIsThemeModalOpen(false)
+
+    presentToast({
+      message: `Theme ${theme.name} applique`,
+      duration: 2000,
+      color: 'success',
+      position: 'top'
+    })
+  }, [presentToast])
+
   const handleLogout = async () => {
     await logout()
     history.push('/login')
@@ -550,6 +650,9 @@ const Map: React.FC = () => {
             )}
           </IonButtons>
           <IonButtons slot="end">
+            <IonButton onClick={() => setIsThemeModalOpen(true)}>
+              <IonIcon slot="icon-only" icon={layersOutline} />
+            </IonButton>
             <IonButton onClick={handleLogout}>
               <IonIcon slot="icon-only" icon={logOutOutline} />
             </IonButton>
@@ -604,6 +707,59 @@ const Map: React.FC = () => {
             }
           ]}
         />
+
+        {/* Theme selector modal */}
+        <IonModal isOpen={isThemeModalOpen} onDidDismiss={() => setIsThemeModalOpen(false)}>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Choisir un theme de carte</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setIsThemeModalOpen(false)}>Fermer</IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent>
+            <div style={{ padding: '16px' }}>
+              {MAP_THEMES.map(theme => (
+                <div
+                  key={theme.id}
+                  onClick={() => changeMapTheme(theme.id)}
+                  style={{
+                    padding: '16px',
+                    marginBottom: '12px',
+                    border: selectedTheme === theme.id ? '2px solid var(--ion-color-primary)' : '1px solid #ddd',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    backgroundColor: selectedTheme === theme.id ? 'var(--ion-color-primary-tint)' : 'white'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '8px',
+                        backgroundColor: theme.preview,
+                        border: '1px solid #ccc'
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 600 }}>
+                        {theme.name}
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
+                        {theme.description}
+                      </p>
+                    </div>
+                    {selectedTheme === theme.id && (
+                      <IonIcon icon={checkmarkCircle} color="primary" style={{ fontSize: '24px' }} />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </IonContent>
+        </IonModal>
       </IonContent>
     </IonPage>
   )
