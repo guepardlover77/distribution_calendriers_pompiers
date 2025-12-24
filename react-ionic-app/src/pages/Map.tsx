@@ -285,6 +285,43 @@ const Map: React.FC = () => {
     }
   }, [])
 
+  // Centrer automatiquement sur la position de l'utilisateur au premier chargement
+  useEffect(() => {
+    const initializeLocation = async () => {
+      if (mapRef.current) {
+        try {
+          // Verifier/demander la permission
+          const permission = await Geolocation.checkPermissions()
+          if (permission.location !== 'granted') {
+            const request = await Geolocation.requestPermissions()
+            if (request.location !== 'granted') {
+              return
+            }
+          }
+
+          // Obtenir la position
+          const position = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 10000
+          })
+
+          const { latitude, longitude } = position.coords
+          mapRef.current?.setView([latitude, longitude], 15)
+        } catch (error) {
+          // En cas d'erreur, garder la vue par defaut
+          console.log('Geolocalisation non disponible:', error)
+        }
+      }
+    }
+
+    // Attendre que la carte soit bien initialisee
+    const timer = setTimeout(() => {
+      initializeLocation()
+    }, 800)
+
+    return () => clearTimeout(timer)
+  }, [])
+
   // Update markers when distributions change
   useEffect(() => {
     updateMarkers()
