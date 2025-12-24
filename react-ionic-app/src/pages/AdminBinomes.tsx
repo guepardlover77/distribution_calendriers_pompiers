@@ -104,7 +104,7 @@ const AdminBinomes: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar color="primary">
           <IonButtons slot="start">
             <IonBackButton defaultHref="/tabs/admin" text="Retour" />
           </IonButtons>

@@ -77,7 +77,7 @@ const List: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar color="primary">
           <IonTitle>Liste</IonTitle>
         </IonToolbar>
       </IonHeader>

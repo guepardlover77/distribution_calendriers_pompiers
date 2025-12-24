@@ -498,7 +498,7 @@ const Map: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar color="primary">
           <IonTitle>Carte</IonTitle>
           <IonButtons slot="start">
             {isAdmin() && (

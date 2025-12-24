@@ -48,7 +48,7 @@ const Admin: React.FC = () => {
   return (
     <IonPage>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar color="primary">
           <IonTitle>Administration</IonTitle>
         </IonToolbar>
       </IonHeader>
