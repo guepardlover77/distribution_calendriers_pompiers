@@ -16,8 +16,10 @@ import {
   IonSpinner,
   IonCheckbox,
   IonLabel,
+  IonIcon,
   useIonToast
 } from '@ionic/react'
+import { locationOutline } from 'ionicons/icons'
 import { Geolocation } from '@capacitor/geolocation'
 import { useDistributionsStore } from '@/stores/distributionsStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -88,6 +90,9 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
   const [useManualGps, setUseManualGps] = useState(false)
   const [searching, setSearching] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Etat pour la suggestion d'adresse par GPS
+  const [suggestingAddress, setSuggestingAddress] = useState(false)
 
   const [formData, setFormData] = useState({
     address: distribution?.address || '',
@@ -262,6 +267,98 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     setAddressResults([])
   }
 
+  // Suggerer une adresse a partir de la position GPS de l'utilisateur
+  const suggestAddressFromGps = async () => {
+    setSuggestingAddress(true)
+    try {
+      // Verifier/demander la permission
+      const permission = await Geolocation.checkPermissions()
+      if (permission.location !== 'granted') {
+        const request = await Geolocation.requestPermissions()
+        if (request.location !== 'granted') {
+          presentToast({
+            message: 'Permission de localisation refusee',
+            duration: 2000,
+            color: 'warning',
+            position: 'top'
+          })
+          return
+        }
+      }
+
+      // Obtenir la position actuelle
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      })
+
+      const { latitude, longitude } = position.coords
+
+      // Appeler l'API BAN pour le reverse geocoding
+      const response = await fetch(
+        `https://api-adresse.data.gouv.fr/reverse/?lon=${longitude}&lat=${latitude}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la recherche d\'adresse')
+      }
+
+      const data = await response.json()
+
+      if (data.features && data.features.length > 0) {
+        const feature = data.features[0]
+        const address = feature.properties.label
+        const city = feature.properties.city
+        const citycode = feature.properties.citycode
+
+        // Mettre a jour la ville si elle n'est pas selectionnee ou differente
+        if (!selectedCity || selectedCity.citycode !== citycode) {
+          const newCity: SavedCity = {
+            label: `${city} (${feature.properties.postcode || ''})`.trim(),
+            citycode: citycode,
+            city: city
+          }
+          setSelectedCity(newCity)
+          localStorage.setItem(SAVED_CITY_KEY, JSON.stringify(newCity))
+        }
+
+        // Mettre a jour l'adresse
+        setAddressQuery(address)
+        setFormData(prev => ({
+          ...prev,
+          address: address,
+          lat: latitude,
+          lng: longitude
+        }))
+        setAddressSelected(true)
+
+        presentToast({
+          message: 'Adresse detectee avec succes',
+          duration: 2000,
+          color: 'success',
+          position: 'top'
+        })
+      } else {
+        presentToast({
+          message: 'Aucune adresse trouvee a proximite',
+          duration: 2000,
+          color: 'warning',
+          position: 'top'
+        })
+      }
+    } catch (error) {
+      console.error('Erreur suggestion adresse:', error)
+      presentToast({
+        message: 'Impossible de detecter l\'adresse',
+        duration: 2000,
+        color: 'danger',
+        position: 'top'
+      })
+    } finally {
+      setSuggestingAddress(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -358,6 +455,47 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
       <IonContent className="ion-padding">
         <form onSubmit={handleSubmit}>
           <IonList>
+            {/* Bouton de suggestion d'adresse par GPS */}
+            {!isEdit && !useManualGps && (
+              <div style={{ marginBottom: '16px' }}>
+                <IonButton
+                  expand="block"
+                  color="secondary"
+                  onClick={suggestAddressFromGps}
+                  disabled={loading || suggestingAddress}
+                >
+                  {suggestingAddress ? (
+                    <IonSpinner name="crescent" style={{ marginRight: '8px' }} />
+                  ) : (
+                    <IonIcon icon={locationOutline} slot="start" />
+                  )}
+                  {suggestingAddress ? 'Detection en cours...' : 'Detecter mon adresse'}
+                </IonButton>
+                <div style={{
+                  marginTop: '8px',
+                  fontSize: '12px',
+                  color: 'var(--ion-color-medium)',
+                  textAlign: 'center'
+                }}>
+                  Utilise votre position GPS pour suggerer l'adresse
+                </div>
+              </div>
+            )}
+
+            {/* Separateur */}
+            {!isEdit && !useManualGps && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '16px',
+                gap: '12px'
+              }}>
+                <div style={{ flex: 1, height: '1px', background: 'var(--ion-color-light-shade)' }} />
+                <span style={{ fontSize: '12px', color: 'var(--ion-color-medium)' }}>ou recherchez manuellement</span>
+                <div style={{ flex: 1, height: '1px', background: 'var(--ion-color-light-shade)' }} />
+              </div>
+            )}
+
             {/* Recherche de ville et d'adresse (mode API BAN) */}
             {!useManualGps && (
               <>
