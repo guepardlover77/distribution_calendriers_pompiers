@@ -14,12 +14,10 @@ import {
   IonSelectOption,
   IonText,
   IonSpinner,
-  IonCheckbox,
-  IonLabel,
   IonIcon,
   useIonToast
 } from '@ionic/react'
-import { locationOutline } from 'ionicons/icons'
+import { locationOutline, searchOutline, navigateOutline, checkmarkCircle, refreshOutline } from 'ionicons/icons'
 import { Geolocation } from '@capacitor/geolocation'
 import { useDistributionsStore } from '@/stores/distributionsStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -31,6 +29,7 @@ interface AddressFeature {
     context: string
     citycode?: string
     city?: string
+    postcode?: string
   }
   geometry: {
     coordinates: [number, number] // [lng, lat]
@@ -55,6 +54,18 @@ interface SavedCity {
   city: string
 }
 
+// Mode de saisie d'adresse
+type AddressMode = 'detecting' | 'detected' | 'manual' | 'gps' | 'error'
+
+interface DetectedAddress {
+  label: string
+  city: string
+  citycode: string
+  postcode: string
+  lat: number
+  lng: number
+}
+
 interface DistributionModalProps {
   distribution?: Distribution
   onDismiss: (saved?: boolean) => void
@@ -71,7 +82,12 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Etat pour la ville (persistante)
+  // Mode de saisie d'adresse
+  const [addressMode, setAddressMode] = useState<AddressMode>(isEdit ? 'detected' : 'detecting')
+  const [detectedAddress, setDetectedAddress] = useState<DetectedAddress | null>(null)
+  const [detectionError, setDetectionError] = useState<string>('')
+
+  // Etat pour la ville (persistante) - utilise en mode manuel
   const [selectedCity, setSelectedCity] = useState<SavedCity | null>(() => {
     const saved = localStorage.getItem(SAVED_CITY_KEY)
     return saved ? JSON.parse(saved) : null
@@ -82,17 +98,13 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
   const [searchingCity, setSearchingCity] = useState(false)
   const citySearchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Etat pour la recherche d'adresse
+  // Etat pour la recherche d'adresse manuelle
   const [addressQuery, setAddressQuery] = useState(distribution?.address || '')
   const [addressResults, setAddressResults] = useState<AddressFeature[]>([])
   const [showResults, setShowResults] = useState(false)
   const [addressSelected, setAddressSelected] = useState(!!distribution?.address)
-  const [useManualGps, setUseManualGps] = useState(false)
   const [searching, setSearching] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Etat pour la suggestion d'adresse par GPS
-  const [suggestingAddress, setSuggestingAddress] = useState(false)
 
   const [formData, setFormData] = useState({
     address: distribution?.address || '',
@@ -109,12 +121,12 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
   const noPaymentStatuses = ['repasser', 'refus', 'maison_vide']
   const requiresPayment = !noPaymentStatuses.includes(formData.status)
 
+  // Detection automatique a l'ouverture du modal
   useEffect(() => {
-    // Si mode manuel GPS activé et pas de distribution existante, récupérer la position
-    if (useManualGps && !distribution) {
-      getCurrentPosition()
+    if (!isEdit) {
+      detectAddressAutomatically()
     }
-  }, [useManualGps, distribution])
+  }, [isEdit])
 
   // Mettre le paiement a "non_specifie" quand le statut ne necessite pas de paiement
   useEffect(() => {
@@ -123,26 +135,121 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     }
   }, [formData.status])
 
-  const getCurrentPosition = async () => {
+  // Detection automatique de l'adresse
+  const detectAddressAutomatically = async () => {
+    setAddressMode('detecting')
+    setDetectionError('')
+
     try {
       // Verifier/demander la permission
       const permission = await Geolocation.checkPermissions()
       if (permission.location !== 'granted') {
-        await Geolocation.requestPermissions()
+        const request = await Geolocation.requestPermissions()
+        if (request.location !== 'granted') {
+          setDetectionError('Permission de localisation refusee')
+          setAddressMode('error')
+          return
+        }
       }
 
+      // Obtenir la position actuelle
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 5000
+        timeout: 15000
       })
 
+      const { latitude, longitude } = position.coords
+
+      // Appeler l'API BAN pour le reverse geocoding
+      const response = await fetch(
+        `https://api-adresse.data.gouv.fr/reverse/?lon=${longitude}&lat=${latitude}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Erreur API adresse')
+      }
+
+      const data = await response.json()
+
+      if (data.features && data.features.length > 0) {
+        const feature = data.features[0]
+        setDetectedAddress({
+          label: feature.properties.label,
+          city: feature.properties.city || '',
+          citycode: feature.properties.citycode || '',
+          postcode: feature.properties.postcode || '',
+          lat: latitude,
+          lng: longitude
+        })
+        setAddressMode('detected')
+      } else {
+        // Pas d'adresse trouvee mais on a les coordonnees
+        setDetectedAddress({
+          label: '',
+          city: '',
+          citycode: '',
+          postcode: '',
+          lat: latitude,
+          lng: longitude
+        })
+        setDetectionError('Aucune adresse trouvee a proximite')
+        setAddressMode('error')
+      }
+    } catch (err) {
+      console.error('Erreur detection adresse:', err)
+      setDetectionError('Impossible de detecter votre position')
+      setAddressMode('error')
+    }
+  }
+
+  // Utiliser l'adresse detectee
+  const useDetectedAddress = () => {
+    if (!detectedAddress) return
+
+    setFormData(prev => ({
+      ...prev,
+      address: detectedAddress.label,
+      lat: detectedAddress.lat,
+      lng: detectedAddress.lng
+    }))
+    setAddressQuery(detectedAddress.label)
+    setAddressSelected(true)
+
+    // Sauvegarder la ville
+    if (detectedAddress.city && detectedAddress.citycode) {
+      const city: SavedCity = {
+        label: `${detectedAddress.city} (${detectedAddress.postcode})`,
+        citycode: detectedAddress.citycode,
+        city: detectedAddress.city
+      }
+      setSelectedCity(city)
+      localStorage.setItem(SAVED_CITY_KEY, JSON.stringify(city))
+    }
+
+    presentToast({
+      message: 'Adresse validee',
+      duration: 1500,
+      color: 'success',
+      position: 'top'
+    })
+  }
+
+  // Passer en mode recherche manuelle
+  const switchToManualMode = () => {
+    setAddressMode('manual')
+    setAddressSelected(false)
+    setAddressQuery('')
+  }
+
+  // Passer en mode GPS uniquement
+  const switchToGpsMode = () => {
+    setAddressMode('gps')
+    if (detectedAddress) {
       setFormData(prev => ({
         ...prev,
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
+        lat: detectedAddress.lat,
+        lng: detectedAddress.lng
       }))
-    } catch (error) {
-      console.log('Impossible d\'obtenir la position actuelle:', error)
     }
   }
 
@@ -196,7 +303,6 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     setCityQuery('')
     setShowCityResults(false)
     setCityResults([])
-    // Reset l'adresse quand on change de ville
     setAddressQuery('')
     setAddressSelected(false)
   }
@@ -219,7 +325,6 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
 
     setSearching(true)
     try {
-      // Si une ville est selectionnee, filtrer par citycode
       let url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
       if (selectedCity?.citycode) {
         url += `&citycode=${selectedCity.citycode}`
@@ -252,7 +357,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     }, 300)
   }
 
-  // Sélectionner une adresse depuis les résultats
+  // Selectionner une adresse depuis les resultats
   const selectAddress = (feature: AddressFeature) => {
     const [lng, lat] = feature.geometry.coordinates
     setAddressQuery(feature.properties.label)
@@ -267,115 +372,25 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     setAddressResults([])
   }
 
-  // Suggerer une adresse a partir de la position GPS de l'utilisateur
-  const suggestAddressFromGps = async () => {
-    setSuggestingAddress(true)
-    try {
-      // Verifier/demander la permission
-      const permission = await Geolocation.checkPermissions()
-      if (permission.location !== 'granted') {
-        const request = await Geolocation.requestPermissions()
-        if (request.location !== 'granted') {
-          presentToast({
-            message: 'Permission de localisation refusee',
-            duration: 2000,
-            color: 'warning',
-            position: 'top'
-          })
-          return
-        }
-      }
-
-      // Obtenir la position actuelle
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000
-      })
-
-      const { latitude, longitude } = position.coords
-
-      // Appeler l'API BAN pour le reverse geocoding
-      const response = await fetch(
-        `https://api-adresse.data.gouv.fr/reverse/?lon=${longitude}&lat=${latitude}`
-      )
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la recherche d\'adresse')
-      }
-
-      const data = await response.json()
-
-      if (data.features && data.features.length > 0) {
-        const feature = data.features[0]
-        const address = feature.properties.label
-        const city = feature.properties.city
-        const citycode = feature.properties.citycode
-
-        // Mettre a jour la ville si elle n'est pas selectionnee ou differente
-        if (!selectedCity || selectedCity.citycode !== citycode) {
-          const newCity: SavedCity = {
-            label: `${city} (${feature.properties.postcode || ''})`.trim(),
-            citycode: citycode,
-            city: city
-          }
-          setSelectedCity(newCity)
-          localStorage.setItem(SAVED_CITY_KEY, JSON.stringify(newCity))
-        }
-
-        // Mettre a jour l'adresse
-        setAddressQuery(address)
-        setFormData(prev => ({
-          ...prev,
-          address: address,
-          lat: latitude,
-          lng: longitude
-        }))
-        setAddressSelected(true)
-
-        presentToast({
-          message: 'Adresse detectee avec succes',
-          duration: 2000,
-          color: 'success',
-          position: 'top'
-        })
-      } else {
-        presentToast({
-          message: 'Aucune adresse trouvee a proximite',
-          duration: 2000,
-          color: 'warning',
-          position: 'top'
-        })
-      }
-    } catch (error) {
-      console.error('Erreur suggestion adresse:', error)
-      presentToast({
-        message: 'Impossible de detecter l\'adresse',
-        duration: 2000,
-        color: 'danger',
-        position: 'top'
-      })
-    } finally {
-      setSuggestingAddress(false)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    // Validation: adresse requise (soit sélectionnée, soit manuelle avec GPS)
-    if (!addressSelected && !useManualGps) {
-      if (!selectedCity) {
-        setError('Veuillez d\'abord selectionner une ville')
-      } else {
-        setError('Veuillez selectionner une adresse ou activer le mode GPS manuel')
-      }
+    // Validation selon le mode
+    if (addressMode === 'detected' && !addressSelected) {
+      setError('Veuillez valider l\'adresse detectee ou choisir une autre option')
       setLoading(false)
       return
     }
 
-    if (useManualGps && !formData.address) {
+    if (addressMode === 'manual' && !addressSelected) {
+      setError('Veuillez selectionner une adresse')
+      setLoading(false)
+      return
+    }
+
+    if (addressMode === 'gps' && !formData.address) {
       setError('Veuillez saisir une adresse')
       setLoading(false)
       return
@@ -384,15 +399,13 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     try {
       const data = {
         ...formData,
-        // Si mode manuel, utiliser l'adresse saisie manuellement
-        address: useManualGps ? formData.address : addressQuery,
+        address: addressMode === 'gps' ? formData.address : addressQuery || formData.address,
         binome_id: currentUser?.username || '',
         zone: currentUser?.assigned_zone || ''
       }
 
       if (isEdit && distribution) {
         await updateDistribution(distribution.id, data)
-
         presentToast({
           message: 'Distribution modifiee avec succes',
           duration: 2000,
@@ -401,7 +414,6 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
         })
       } else {
         await createDistribution(data)
-
         presentToast({
           message: 'Distribution ajoutee avec succes',
           duration: 2000,
@@ -411,18 +423,15 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
       }
 
       onDismiss(true)
-
     } catch (err) {
       const message = (err as Error).message || 'Erreur lors de l\'enregistrement'
       setError(message)
-
       presentToast({
         message,
         duration: 3000,
         color: 'danger',
         position: 'top'
       })
-
     } finally {
       setLoading(false)
     }
@@ -430,15 +439,6 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
 
   const updateField = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  // Basculer vers le mode GPS manuel
-  const handleManualGpsToggle = (checked: boolean) => {
-    setUseManualGps(checked)
-    if (checked) {
-      setAddressSelected(false)
-      setShowResults(false)
-    }
   }
 
   return (
@@ -455,287 +455,421 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
       <IonContent className="ion-padding">
         <form onSubmit={handleSubmit}>
           <IonList>
-            {/* Bouton de suggestion d'adresse par GPS */}
-            {!isEdit && !useManualGps && (
-              <div style={{ marginBottom: '16px' }}>
-                <IonButton
-                  expand="block"
-                  color="secondary"
-                  onClick={suggestAddressFromGps}
-                  disabled={loading || suggestingAddress}
-                >
-                  {suggestingAddress ? (
-                    <IonSpinner name="crescent" style={{ marginRight: '8px' }} />
-                  ) : (
-                    <IonIcon icon={locationOutline} slot="start" />
-                  )}
-                  {suggestingAddress ? 'Detection en cours...' : 'Detecter mon adresse'}
-                </IonButton>
-                <div style={{
-                  marginTop: '8px',
-                  fontSize: '12px',
-                  color: 'var(--ion-color-medium)',
-                  textAlign: 'center'
-                }}>
-                  Utilise votre position GPS pour suggerer l'adresse
-                </div>
-              </div>
-            )}
-
-            {/* Separateur */}
-            {!isEdit && !useManualGps && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: '16px',
-                gap: '12px'
-              }}>
-                <div style={{ flex: 1, height: '1px', background: 'var(--ion-color-light-shade)' }} />
-                <span style={{ fontSize: '12px', color: 'var(--ion-color-medium)' }}>ou recherchez manuellement</span>
-                <div style={{ flex: 1, height: '1px', background: 'var(--ion-color-light-shade)' }} />
-              </div>
-            )}
-
-            {/* Recherche de ville et d'adresse (mode API BAN) */}
-            {!useManualGps && (
+            {/* Section Adresse */}
+            {!isEdit && (
               <>
-                {/* Selection de la ville */}
-                <div style={{ marginBottom: '12px', position: 'relative' }}>
-                  {selectedCity ? (
-                    // Ville selectionnee
+                {/* Mode Detection en cours */}
+                {addressMode === 'detecting' && (
+                  <div style={{
+                    padding: '24px',
+                    textAlign: 'center',
+                    background: 'var(--ion-color-light)',
+                    borderRadius: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <IonSpinner name="crescent" style={{ width: '48px', height: '48px' }} />
+                    <p style={{ margin: '16px 0 0', color: 'var(--ion-color-medium)' }}>
+                      Detection de votre adresse en cours...
+                    </p>
+                  </div>
+                )}
+
+                {/* Mode Adresse detectee */}
+                {addressMode === 'detected' && detectedAddress && !addressSelected && (
+                  <div style={{
+                    background: '#dcfce7',
+                    border: '2px solid #22c55e',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <IonIcon icon={locationOutline} style={{ fontSize: '24px', color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '12px', color: '#166534', marginBottom: '4px', fontWeight: 500 }}>
+                          Adresse detectee
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: 600, color: '#14532d' }}>
+                          {detectedAddress.label}
+                        </div>
+                      </div>
+                    </div>
+
+                    <IonButton
+                      expand="block"
+                      color="success"
+                      onClick={useDetectedAddress}
+                      style={{ marginTop: '16px' }}
+                    >
+                      <IonIcon icon={checkmarkCircle} slot="start" />
+                      Utiliser cette adresse
+                    </IonButton>
+
                     <div style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      background: '#e0f2fe',
-                      borderRadius: '8px',
-                      border: '1px solid #0ea5e9'
+                      gap: '8px',
+                      marginTop: '12px'
                     }}>
-                      <div>
-                        <div style={{ fontSize: '12px', color: '#0369a1', marginBottom: '2px' }}>Ville selectionnee</div>
-                        <div style={{ fontWeight: 600, color: '#0c4a6e' }}>{selectedCity.label}</div>
+                      <IonButton
+                        expand="block"
+                        fill="outline"
+                        color="medium"
+                        onClick={switchToManualMode}
+                        style={{ flex: 1 }}
+                      >
+                        <IonIcon icon={searchOutline} slot="start" />
+                        Rechercher
+                      </IonButton>
+                      <IonButton
+                        expand="block"
+                        fill="outline"
+                        color="medium"
+                        onClick={switchToGpsMode}
+                        style={{ flex: 1 }}
+                      >
+                        <IonIcon icon={navigateOutline} slot="start" />
+                        GPS seul
+                      </IonButton>
+                    </div>
+                  </div>
+                )}
+
+                {/* Adresse validee */}
+                {addressMode === 'detected' && addressSelected && (
+                  <div style={{
+                    background: '#dcfce7',
+                    border: '2px solid #22c55e',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <IonIcon icon={checkmarkCircle} style={{ fontSize: '24px', color: '#16a34a' }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '12px', color: '#166534', marginBottom: '2px' }}>
+                          Adresse validee
+                        </div>
+                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#14532d' }}>
+                          {addressQuery || formData.address}
+                        </div>
                       </div>
                       <IonButton
                         fill="clear"
                         size="small"
-                        onClick={clearCity}
-                        style={{ '--color': '#0369a1' }}
+                        onClick={() => setAddressSelected(false)}
                       >
-                        Changer
+                        Modifier
                       </IonButton>
                     </div>
-                  ) : (
-                    // Recherche de ville
-                    <>
-                      <IonItem style={{ '--background': 'var(--ion-color-light)', '--border-radius': '8px' }}>
-                        <IonInput
-                          value={cityQuery}
-                          onIonInput={(e) => handleCityInput(e.detail.value || '')}
-                          onIonFocus={() => cityResults.length > 0 && setShowCityResults(true)}
-                          label="1. Rechercher une ville"
-                          labelPlacement="floating"
-                          type="text"
-                          placeholder="Tapez le nom de la ville..."
-                          disabled={loading}
-                        />
-                        {searchingCity && <IonSpinner name="crescent" slot="end" />}
-                      </IonItem>
+                  </div>
+                )}
 
-                      {/* Resultats de recherche ville */}
-                      {showCityResults && cityResults.length > 0 && (
+                {/* Mode Erreur de detection */}
+                {addressMode === 'error' && (
+                  <div style={{
+                    background: '#fef2f2',
+                    border: '2px solid #ef4444',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                      <IonIcon icon={locationOutline} style={{ fontSize: '32px', color: '#dc2626' }} />
+                      <p style={{ margin: '8px 0 0', color: '#991b1b', fontWeight: 500 }}>
+                        {detectionError}
+                      </p>
+                    </div>
+
+                    <IonButton
+                      expand="block"
+                      color="danger"
+                      fill="outline"
+                      onClick={detectAddressAutomatically}
+                      style={{ marginBottom: '8px' }}
+                    >
+                      <IonIcon icon={refreshOutline} slot="start" />
+                      Reessayer
+                    </IonButton>
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <IonButton
+                        expand="block"
+                        fill="outline"
+                        color="medium"
+                        onClick={switchToManualMode}
+                        style={{ flex: 1 }}
+                      >
+                        <IonIcon icon={searchOutline} slot="start" />
+                        Rechercher
+                      </IonButton>
+                      <IonButton
+                        expand="block"
+                        fill="outline"
+                        color="medium"
+                        onClick={switchToGpsMode}
+                        style={{ flex: 1 }}
+                      >
+                        <IonIcon icon={navigateOutline} slot="start" />
+                        GPS seul
+                      </IonButton>
+                    </div>
+                  </div>
+                )}
+
+                {/* Mode Recherche manuelle */}
+                {addressMode === 'manual' && (
+                  <div style={{
+                    background: 'var(--ion-color-light)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--ion-color-dark)' }}>Recherche manuelle</span>
+                      <IonButton
+                        fill="clear"
+                        size="small"
+                        onClick={detectAddressAutomatically}
+                      >
+                        <IonIcon icon={locationOutline} slot="start" />
+                        Detection auto
+                      </IonButton>
+                    </div>
+
+                    {/* Selection de la ville */}
+                    <div style={{ marginBottom: '12px', position: 'relative' }}>
+                      {selectedCity ? (
                         <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          background: '#ffffff',
-                          border: '1px solid #d1d5db',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          background: '#e0f2fe',
                           borderRadius: '8px',
-                          maxHeight: '200px',
-                          overflowY: 'auto',
-                          zIndex: 1000,
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                          border: '1px solid #0ea5e9'
                         }}>
-                          {cityResults.map((feature, index) => (
-                            <div
-                              key={index}
-                              onClick={() => selectCity(feature)}
-                              style={{
-                                padding: '12px 16px',
-                                cursor: 'pointer',
-                                borderBottom: index < cityResults.length - 1 ? '1px solid #e5e7eb' : 'none',
-                                background: '#ffffff'
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f4f6')}
-                              onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
-                            >
-                              <div style={{ fontWeight: 500, color: '#111827' }}>{feature.properties.label}</div>
-                              <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                                {feature.properties.context}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Recherche d'adresse (seulement si ville selectionnee) */}
-                {selectedCity && (
-                  <div style={{ marginBottom: '16px', position: 'relative' }}>
-                    <IonItem style={{ '--background': 'var(--ion-color-light)', '--border-radius': '8px' }}>
-                      <IonInput
-                        value={addressQuery}
-                        onIonInput={(e) => handleAddressInput(e.detail.value || '')}
-                        onIonFocus={() => addressResults.length > 0 && setShowResults(true)}
-                        label="2. Rechercher une adresse"
-                        labelPlacement="floating"
-                        type="text"
-                        placeholder={`Adresse a ${selectedCity.city}...`}
-                        disabled={loading}
-                      />
-                      {searching && <IonSpinner name="crescent" slot="end" />}
-                    </IonItem>
-
-                    {/* Resultats de recherche adresse */}
-                    {showResults && addressResults.length > 0 && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: '#ffffff',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        zIndex: 1000,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                      }}>
-                        {addressResults.map((feature, index) => (
-                          <div
-                            key={index}
-                            onClick={() => selectAddress(feature)}
-                            style={{
-                              padding: '12px 16px',
-                              cursor: 'pointer',
-                              borderBottom: index < addressResults.length - 1 ? '1px solid #e5e7eb' : 'none',
-                              background: '#ffffff'
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f4f6')}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
-                          >
-                            <div style={{ fontWeight: 500, color: '#111827' }}>{feature.properties.label}</div>
-                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                              {feature.properties.context}
-                            </div>
+                          <div>
+                            <div style={{ fontSize: '11px', color: '#0369a1' }}>Ville</div>
+                            <div style={{ fontWeight: 600, color: '#0c4a6e', fontSize: '14px' }}>{selectedCity.label}</div>
                           </div>
-                        ))}
+                          <IonButton fill="clear" size="small" onClick={clearCity}>
+                            Changer
+                          </IonButton>
+                        </div>
+                      ) : (
+                        <>
+                          <IonItem style={{ '--background': 'white', '--border-radius': '8px' }}>
+                            <IonInput
+                              value={cityQuery}
+                              onIonInput={(e) => handleCityInput(e.detail.value || '')}
+                              onIonFocus={() => cityResults.length > 0 && setShowCityResults(true)}
+                              label="Ville"
+                              labelPlacement="floating"
+                              type="text"
+                              placeholder="Rechercher une ville..."
+                              disabled={loading}
+                            />
+                            {searchingCity && <IonSpinner name="crescent" slot="end" />}
+                          </IonItem>
+
+                          {showCityResults && cityResults.length > 0 && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: 0,
+                              right: 0,
+                              background: '#ffffff',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '8px',
+                              maxHeight: '180px',
+                              overflowY: 'auto',
+                              zIndex: 1000,
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                            }}>
+                              {cityResults.map((feature, index) => (
+                                <div
+                                  key={index}
+                                  onClick={() => selectCity(feature)}
+                                  style={{
+                                    padding: '10px 14px',
+                                    cursor: 'pointer',
+                                    borderBottom: index < cityResults.length - 1 ? '1px solid #e5e7eb' : 'none'
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 500, fontSize: '14px' }}>{feature.properties.label}</div>
+                                  <div style={{ fontSize: '11px', color: '#6b7280' }}>{feature.properties.context}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Recherche d'adresse */}
+                    {selectedCity && (
+                      <div style={{ position: 'relative' }}>
+                        <IonItem style={{ '--background': 'white', '--border-radius': '8px' }}>
+                          <IonInput
+                            value={addressQuery}
+                            onIonInput={(e) => handleAddressInput(e.detail.value || '')}
+                            onIonFocus={() => addressResults.length > 0 && setShowResults(true)}
+                            label="Adresse"
+                            labelPlacement="floating"
+                            type="text"
+                            placeholder={`Adresse a ${selectedCity.city}...`}
+                            disabled={loading}
+                          />
+                          {searching && <IonSpinner name="crescent" slot="end" />}
+                        </IonItem>
+
+                        {showResults && addressResults.length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            background: '#ffffff',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            maxHeight: '180px',
+                            overflowY: 'auto',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                          }}>
+                            {addressResults.map((feature, index) => (
+                              <div
+                                key={index}
+                                onClick={() => selectAddress(feature)}
+                                style={{
+                                  padding: '10px 14px',
+                                  cursor: 'pointer',
+                                  borderBottom: index < addressResults.length - 1 ? '1px solid #e5e7eb' : 'none'
+                                }}
+                              >
+                                <div style={{ fontWeight: 500, fontSize: '14px' }}>{feature.properties.label}</div>
+                                <div style={{ fontSize: '11px', color: '#6b7280' }}>{feature.properties.context}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {addressSelected && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: '8px 12px',
+                            background: '#dcfce7',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#166534',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <IonIcon icon={checkmarkCircle} />
+                            Adresse validee
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* Indicateur d'adresse selectionnee */}
-                    {addressSelected && (
+                    {!selectedCity && (
                       <div style={{
-                        marginTop: '8px',
-                        padding: '8px 12px',
-                        background: '#dcfce7',
+                        padding: '10px',
+                        background: '#fef3c7',
                         borderRadius: '6px',
                         fontSize: '13px',
-                        color: '#166534',
-                        border: '1px solid #86efac'
+                        color: '#92400e'
                       }}>
-                        Adresse validee - Coordonnees GPS recuperees automatiquement
+                        Selectionnez d'abord une ville
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Message si pas de ville selectionnee */}
-                {!selectedCity && (
+                {/* Mode GPS seul */}
+                {addressMode === 'gps' && (
                   <div style={{
-                    marginBottom: '12px',
-                    padding: '12px',
-                    background: '#fef3c7',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    color: '#92400e',
-                    border: '1px solid #fcd34d'
+                    background: 'var(--ion-color-light)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '16px'
                   }}>
-                    Selectionnez d'abord une ville pour rechercher une adresse
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--ion-color-dark)' }}>Mode GPS</span>
+                      <IonButton
+                        fill="clear"
+                        size="small"
+                        onClick={detectAddressAutomatically}
+                      >
+                        <IonIcon icon={locationOutline} slot="start" />
+                        Detection auto
+                      </IonButton>
+                    </div>
+
+                    <IonItem style={{ '--background': 'white', '--border-radius': '8px', marginBottom: '12px' }}>
+                      <IonInput
+                        value={formData.address}
+                        onIonInput={(e) => updateField('address', e.detail.value || '')}
+                        label="Adresse (saisie libre)"
+                        labelPlacement="floating"
+                        type="text"
+                        required
+                        disabled={loading}
+                      />
+                    </IonItem>
+
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <IonItem style={{ '--background': 'white', '--border-radius': '8px', flex: 1 }}>
+                        <IonInput
+                          value={formData.lat}
+                          onIonInput={(e) => updateField('lat', parseFloat(e.detail.value || '0'))}
+                          label="Latitude"
+                          labelPlacement="floating"
+                          type="number"
+                          step="0.000001"
+                          disabled={loading}
+                        />
+                      </IonItem>
+                      <IonItem style={{ '--background': 'white', '--border-radius': '8px', flex: 1 }}>
+                        <IonInput
+                          value={formData.lng}
+                          onIonInput={(e) => updateField('lng', parseFloat(e.detail.value || '0'))}
+                          label="Longitude"
+                          labelPlacement="floating"
+                          type="number"
+                          step="0.000001"
+                          disabled={loading}
+                        />
+                      </IonItem>
+                    </div>
+
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '8px 12px',
+                      background: '#fef3c7',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      color: '#92400e'
+                    }}>
+                      Coordonnees GPS detectees automatiquement
+                    </div>
                   </div>
                 )}
               </>
             )}
 
-            {/* Checkbox pour activer le mode GPS manuel */}
-            <IonItem style={{ '--background': 'transparent', marginBottom: '12px' }}>
-              <IonCheckbox
-                checked={useManualGps}
-                onIonChange={(e) => handleManualGpsToggle(e.detail.checked)}
-                disabled={loading}
-                slot="start"
-              />
-              <IonLabel>Adresse introuvable - Utiliser les coordonnees GPS</IonLabel>
-            </IonItem>
-
-            {/* Mode manuel: Adresse + coordonnées GPS */}
-            {useManualGps && (
-              <>
-                {/* Adresse manuelle */}
-                <IonItem style={{ '--background': 'var(--ion-color-light)', '--border-radius': '8px', marginBottom: '12px' }}>
-                  <IonInput
-                    value={formData.address}
-                    onIonInput={(e) => updateField('address', e.detail.value || '')}
-                    label="Adresse (saisie libre)"
-                    labelPlacement="floating"
-                    type="text"
-                    required
-                    disabled={loading}
-                  />
-                </IonItem>
-
-                {/* Latitude */}
-                <IonItem style={{ '--background': 'var(--ion-color-light)', '--border-radius': '8px', marginBottom: '12px' }}>
-                  <IonInput
-                    value={formData.lat}
-                    onIonInput={(e) => updateField('lat', parseFloat(e.detail.value || '0'))}
-                    label="Latitude"
-                    labelPlacement="floating"
-                    type="number"
-                    step="0.000001"
-                    required
-                    disabled={loading}
-                  />
-                </IonItem>
-
-                {/* Longitude */}
-                <IonItem style={{ '--background': 'var(--ion-color-light)', '--border-radius': '8px', marginBottom: '12px' }}>
-                  <IonInput
-                    value={formData.lng}
-                    onIonInput={(e) => updateField('lng', parseFloat(e.detail.value || '0'))}
-                    label="Longitude"
-                    labelPlacement="floating"
-                    type="number"
-                    step="0.000001"
-                    required
-                    disabled={loading}
-                  />
-                </IonItem>
-
-                <div style={{
-                  marginBottom: '16px',
-                  padding: '8px 12px',
-                  background: 'var(--ion-color-warning-tint)',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  color: 'var(--ion-color-warning-shade)'
-                }}>
-                  Position GPS actuelle chargee. Modifiez si necessaire.
-                </div>
-              </>
+            {/* Mode edition - afficher l'adresse existante */}
+            {isEdit && (
+              <div style={{
+                background: '#e0f2fe',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#0369a1', marginBottom: '4px' }}>Adresse</div>
+                <div style={{ fontWeight: 600, color: '#0c4a6e' }}>{distribution?.address}</div>
+              </div>
             )}
 
             {/* Nom du destinataire */}
@@ -766,7 +900,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
               </IonSelect>
             </IonItem>
 
-            {/* Amount - visible seulement si paiement requis */}
+            {/* Amount */}
             {requiresPayment && (
               <IonItem style={{ '--background': 'var(--ion-color-light)', '--border-radius': '8px', marginBottom: '12px' }}>
                 <IonInput
@@ -782,7 +916,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
               </IonItem>
             )}
 
-            {/* Payment method - visible seulement si paiement requis */}
+            {/* Payment method */}
             {requiresPayment && (
               <IonItem style={{ '--background': 'var(--ion-color-light)', '--border-radius': '8px', marginBottom: '12px' }}>
                 <IonSelect
@@ -800,7 +934,6 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
               </IonItem>
             )}
 
-            {/* Message pour statuts sans paiement */}
             {!requiresPayment && (
               <div style={{
                 marginBottom: '12px',
@@ -844,7 +977,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
           <IonButton
             expand="block"
             type="submit"
-            disabled={loading}
+            disabled={loading || addressMode === 'detecting'}
             className="ion-margin-top"
           >
             {loading ? <IonSpinner name="crescent" /> : (isEdit ? 'Modifier' : 'Ajouter')}
