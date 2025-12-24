@@ -25,6 +25,10 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'light',
       backgroundColor: '#3b82f6'
+    },
+    Geolocation: {
+      // Forcer l'utilisation du GPS pour une meilleure precision
+      enableHighAccuracy: true
     }
   },
   android: {

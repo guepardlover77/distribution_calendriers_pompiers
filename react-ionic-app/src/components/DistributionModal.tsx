@@ -135,7 +135,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     }
   }, [formData.status])
 
-  // Detection automatique de l'adresse
+  // Detection automatique de l'adresse avec haute precision
   const detectAddressAutomatically = async () => {
     setAddressMode('detecting')
     setDetectionError('')
@@ -152,13 +152,91 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
         }
       }
 
-      // Obtenir la position actuelle
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 15000
-      })
+      // Utiliser watchPosition pour obtenir la position la plus precise
+      // On collecte les positions pendant quelques secondes et on garde la meilleure
+      const positions: { lat: number; lng: number; accuracy: number }[] = []
+      const maxWaitTime = 8000 // 8 secondes max
+      const minAccuracy = 10 // On s'arrete si on atteint 10m de precision
+      const startTime = Date.now()
 
-      const { latitude, longitude } = position.coords
+      const getBestPosition = (): Promise<{ latitude: number; longitude: number }> => {
+        return new Promise((resolve, reject) => {
+          let watchId: string | null = null
+          let timeoutId: NodeJS.Timeout | null = null
+
+          const cleanup = () => {
+            if (watchId) {
+              Geolocation.clearWatch({ id: watchId })
+            }
+            if (timeoutId) {
+              clearTimeout(timeoutId)
+            }
+          }
+
+          const finalize = () => {
+            cleanup()
+            if (positions.length === 0) {
+              reject(new Error('Aucune position obtenue'))
+              return
+            }
+            // Trier par precision (accuracy la plus basse = meilleure precision)
+            positions.sort((a, b) => a.accuracy - b.accuracy)
+            const best = positions[0]
+            console.log(`[Geolocation] Meilleure position: ${best.accuracy}m de precision sur ${positions.length} mesures`)
+            resolve({ latitude: best.lat, longitude: best.lng })
+          }
+
+          // Timeout de securite
+          timeoutId = setTimeout(() => {
+            console.log('[Geolocation] Timeout atteint, utilisation de la meilleure position disponible')
+            finalize()
+          }, maxWaitTime)
+
+          // Demarrer la surveillance
+          Geolocation.watchPosition(
+            {
+              enableHighAccuracy: true,
+              timeout: maxWaitTime,
+              maximumAge: 0 // Forcer une nouvelle position, pas de cache
+            },
+            (position, err) => {
+              if (err) {
+                console.error('[Geolocation] Erreur watchPosition:', err)
+                return
+              }
+
+              if (position) {
+                const accuracy = position.coords.accuracy
+                console.log(`[Geolocation] Position recue: precision ${accuracy}m`)
+
+                positions.push({
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude,
+                  accuracy: accuracy
+                })
+
+                // Si on a une excellente precision, on peut s'arreter
+                if (accuracy <= minAccuracy) {
+                  console.log('[Geolocation] Precision optimale atteinte')
+                  finalize()
+                }
+                // Sinon, on continue pendant au moins 3 secondes pour avoir plusieurs mesures
+                else if (Date.now() - startTime > 3000 && positions.length >= 3 && accuracy <= 20) {
+                  console.log('[Geolocation] Precision acceptable avec plusieurs mesures')
+                  finalize()
+                }
+              }
+            }
+          ).then(id => {
+            watchId = id
+          }).catch(err => {
+            cleanup()
+            reject(err)
+          })
+        })
+      }
+
+      const { latitude, longitude } = await getBestPosition()
 
       // Appeler l'API BAN pour le reverse geocoding
       const response = await fetch(
