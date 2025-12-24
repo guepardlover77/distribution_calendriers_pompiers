@@ -26,6 +26,7 @@ import 'leaflet-draw'
 import { useAuthStore } from '@/stores/authStore'
 import { useDistributionsStore } from '@/stores/distributionsStore'
 import { useZonesStore } from '@/stores/zonesStore'
+import { Distribution } from '@/services/storage'
 import DistributionModal from '@/components/DistributionModal'
 
 // Import leaflet-draw CSS
@@ -122,6 +123,7 @@ const Map: React.FC = () => {
   }>({ isOpen: false })
   const [selectedTheme, setSelectedTheme] = useState<string>('voyager')
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false)
+  const [editingDistribution, setEditingDistribution] = useState<Distribution | null>(null)
 
   // Demander la permission de geolocalisation
   const requestLocationPermission = async () => {
@@ -216,6 +218,8 @@ const Map: React.FC = () => {
           <strong>${dist.address}</strong><br>
           <span style="color: ${color}">&bull; ${getStatusLabel(dist.status)}</span>
           ${dist.amount > 0 ? `<br><strong>Montant:</strong> ${dist.amount.toFixed(2)} EUR` : ''}
+          ${dist.payment_method && dist.payment_method !== 'non_specifie' ? `<br><strong>Paiement:</strong> ${dist.payment_method}` : ''}
+          <br><button class="distribution-edit-btn" data-distribution-id="${dist.id}" style="margin-top: 8px; padding: 6px 12px; background: var(--ion-color-primary, #3b82f6); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">Modifier</button>
         </div>
       `)
 
@@ -299,12 +303,13 @@ const Map: React.FC = () => {
       zonesLayerRef.current = new L.FeatureGroup()
       mapRef.current.addLayer(zonesLayerRef.current)
 
-      // Handle popup clicks for zone deletion
+      // Handle popup clicks for zone deletion and distribution editing
       mapRef.current.on('popupopen', (e: L.PopupEvent) => {
         const popup = e.popup
         const container = popup.getElement()
         if (!container) return
 
+        // Handler pour suppression de zone
         const deleteBtn = container.querySelector('.zone-delete-btn')
         if (deleteBtn) {
           deleteBtn.addEventListener('click', async (evt) => {
@@ -329,6 +334,23 @@ const Map: React.FC = () => {
               }
             }
             mapRef.current?.closePopup()
+          })
+        }
+
+        // Handler pour modification de distribution
+        const editBtn = container.querySelector('.distribution-edit-btn')
+        if (editBtn) {
+          editBtn.addEventListener('click', (evt) => {
+            const distributionId = (evt.target as HTMLElement).getAttribute('data-distribution-id')
+            if (distributionId) {
+              const items = filteredItems()
+              const distribution = items.find(d => d.id === distributionId)
+              if (distribution) {
+                setEditingDistribution(distribution)
+                setIsModalOpen(true)
+                mapRef.current?.closePopup()
+              }
+            }
           })
         }
       })
@@ -615,6 +637,7 @@ const Map: React.FC = () => {
 
   const handleModalDismiss = (saved?: boolean) => {
     setIsModalOpen(false)
+    setEditingDistribution(null)
     if (saved) {
       updateMarkers()
     }
@@ -677,8 +700,11 @@ const Map: React.FC = () => {
           </IonFab>
         </div>
 
-        <IonModal isOpen={isModalOpen} onDidDismiss={() => setIsModalOpen(false)}>
-          <DistributionModal onDismiss={handleModalDismiss} />
+        <IonModal isOpen={isModalOpen} onDidDismiss={() => handleModalDismiss(false)}>
+          <DistributionModal
+            distribution={editingDistribution || undefined}
+            onDismiss={handleModalDismiss}
+          />
         </IonModal>
 
         {/* Alert for zone name */}
