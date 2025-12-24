@@ -263,7 +263,7 @@ const AdminZones: React.FC = () => {
                 <div
                   key={zone.Id || zone.id}
                   style={{
-                    background: 'white',
+                    background: 'var(--card-background)',
                     borderRadius: '16px',
                     padding: '16px',
                     boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
@@ -275,11 +275,11 @@ const AdminZones: React.FC = () => {
                   {/* Header de la carte */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <div style={{ flex: 1 }}>
-                      <h3 style={{ 
-                        margin: '0 0 4px 0', 
-                        fontSize: '18px', 
+                      <h3 style={{
+                        margin: '0 0 4px 0',
+                        fontSize: '18px',
                         fontWeight: '600',
-                        color: '#1f2937'
+                        color: 'var(--text-primary)'
                       }}>
                         {zone.name}
                       </h3>
@@ -333,12 +333,12 @@ const AdminZones: React.FC = () => {
                   </div>
 
                   {/* Actions */}
-                  <div style={{ 
-                    display: 'flex', 
+                  <div style={{
+                    display: 'flex',
                     gap: '8px',
                     marginTop: '12px',
                     paddingTop: '12px',
-                    borderTop: '1px solid #f3f4f6'
+                    borderTop: '1px solid var(--border-color)'
                   }}>
                     <IonButton 
                       fill="outline" 
@@ -510,7 +510,7 @@ const AdminZones: React.FC = () => {
                       {binome.binome_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: '#1f2937' }}>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
                         {binome.binome_name}
                       </div>
                       <div style={{ fontSize: '13px', color: 'var(--ion-color-medium)' }}>

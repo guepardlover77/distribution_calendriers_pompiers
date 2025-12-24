@@ -363,16 +363,46 @@
 }
 
 /*
+ * Light Theme Variables (default)
+ */
+:root {
+  --card-background: #ffffff;
+  --card-background-alt: #f9fafb;
+  --text-primary: #1f2937;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  --border-color: #f3f4f6;
+  --border-color-medium: #e5e7eb;
+  --dropdown-background: #ffffff;
+  --dropdown-border: #d1d5db;
+  --input-label-color: #374151;
+}
+
+/*
  * Dark Theme Overrides
  */
 @media (prefers-color-scheme: dark) {
+  /* Dark theme variables */
+  :root {
+    --card-background: #1e1e1e;
+    --card-background-alt: #2a2a2a;
+    --text-primary: #f3f4f6;
+    --text-secondary: #e5e7eb;
+    --text-muted: #9ca3af;
+    --border-color: #374151;
+    --border-color-medium: #4b5563;
+    --dropdown-background: #1e1e1e;
+    --dropdown-border: #374151;
+    --input-label-color: #d1d5db;
+  }
+
   /* Stats page */
   .stats-content {
     --background: #121212;
   }
 
   .stat-card {
-    background: #1e1e1e;
+    background: var(--card-background);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
@@ -381,12 +411,12 @@
   }
 
   .chart-card {
-    --background: #1e1e1e;
+    --background: var(--card-background);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   .stats-progress-section {
-    background: #1e1e1e;
+    background: var(--card-background);
   }
 
   /* Login page */
@@ -401,12 +431,12 @@
 
   /* Leaflet popups in dark mode */
   .leaflet-popup-content-wrapper {
-    background: #1e1e1e;
+    background: var(--card-background);
     color: #ffffff;
   }
 
   .leaflet-popup-tip {
-    background: #1e1e1e;
+    background: var(--card-background);
   }
 
   /* Zone delete button */
@@ -421,17 +451,22 @@
   /* Address search results dropdown */
   .address-results,
   .city-results {
-    background: #1e1e1e;
-    border-color: #333333;
+    background: var(--dropdown-background);
+    border-color: var(--dropdown-border);
   }
 
   /* Theme modal items */
   .theme-item {
-    background: #1e1e1e;
-    border-color: #333333;
+    background: var(--card-background);
+    border-color: var(--dropdown-border);
   }
 
   .theme-item:hover {
-    background: #2a2a2a;
+    background: var(--card-background-alt);
+  }
+
+  /* Fix for IonSearchbar in dark mode */
+  ion-searchbar {
+    --background: var(--card-background) !important;
   }
 }

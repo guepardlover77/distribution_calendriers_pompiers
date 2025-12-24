@@ -212,12 +212,12 @@ const BinomeModal: React.FC<BinomeModalProps> = ({ binome, onDismiss }) => {
           <form onSubmit={handleSubmit}>
             {/* Username */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 marginBottom: '8px',
-                color: getFieldError('username') ? 'var(--ion-color-danger)' : '#374151'
+                color: getFieldError('username') ? 'var(--ion-color-danger)' : 'var(--input-label-color)'
               }}>
                 <IonIcon icon={personOutline} />
                 <span style={{ fontSize: '14px', fontWeight: '500' }}>Nom d'utilisateur</span>
@@ -262,12 +262,12 @@ const BinomeModal: React.FC<BinomeModalProps> = ({ binome, onDismiss }) => {
 
             {/* Password */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 marginBottom: '8px',
-                color: getFieldError('password') ? 'var(--ion-color-danger)' : '#374151'
+                color: getFieldError('password') ? 'var(--ion-color-danger)' : 'var(--input-label-color)'
               }}>
                 <IonIcon icon={lockClosedOutline} />
                 <span style={{ fontSize: '14px', fontWeight: '500' }}>
@@ -309,12 +309,12 @@ const BinomeModal: React.FC<BinomeModalProps> = ({ binome, onDismiss }) => {
 
             {/* Binome name */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 marginBottom: '8px',
-                color: getFieldError('binome_name') ? 'var(--ion-color-danger)' : '#374151'
+                color: getFieldError('binome_name') ? 'var(--ion-color-danger)' : 'var(--input-label-color)'
               }}>
                 <IonIcon icon={peopleOutline} />
                 <span style={{ fontSize: '14px', fontWeight: '500' }}>Nom du binôme</span>
@@ -354,12 +354,12 @@ const BinomeModal: React.FC<BinomeModalProps> = ({ binome, onDismiss }) => {
 
             {/* Assigned zone */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 marginBottom: '8px',
-                color: '#374151'
+                color: 'var(--input-label-color)'
               }}>
                 <IonIcon icon={mapOutline} />
                 <span style={{ fontSize: '14px', fontWeight: '500' }}>Zone assignée</span>
@@ -430,9 +430,9 @@ const BinomeModal: React.FC<BinomeModalProps> = ({ binome, onDismiss }) => {
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ 
-                  fontWeight: '600', 
-                  color: formData.is_admin ? '#d97706' : '#374151',
+                <div style={{
+                  fontWeight: '600',
+                  color: formData.is_admin ? '#d97706' : 'var(--text-primary)',
                   marginBottom: '2px'
                 }}>
                   Administrateur

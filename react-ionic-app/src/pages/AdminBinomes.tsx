@@ -263,7 +263,7 @@ const AdminBinomes: React.FC = () => {
                 <div
                   key={binome.Id || binome.id}
                   style={{
-                    background: 'white',
+                    background: 'var(--card-background)',
                     borderRadius: '16px',
                     padding: '16px',
                     boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
@@ -310,11 +310,11 @@ const AdminBinomes: React.FC = () => {
                       {getInitials(binome.binome_name)}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <h3 style={{ 
-                        margin: '0 0 2px 0', 
-                        fontSize: '17px', 
+                      <h3 style={{
+                        margin: '0 0 2px 0',
+                        fontSize: '17px',
                         fontWeight: '600',
-                        color: '#1f2937',
+                        color: 'var(--text-primary)',
                         paddingRight: isAdmin(binome) ? '60px' : '0'
                       }}>
                         {binome.binome_name}
@@ -375,11 +375,11 @@ const AdminBinomes: React.FC = () => {
                   </div>
 
                   {/* Actions */}
-                  <div style={{ 
-                    display: 'flex', 
+                  <div style={{
+                    display: 'flex',
                     gap: '8px',
                     paddingTop: '12px',
-                    borderTop: '1px solid #f3f4f6'
+                    borderTop: '1px solid var(--border-color)'
                   }}>
                     <IonButton 
                       fill="outline" 
