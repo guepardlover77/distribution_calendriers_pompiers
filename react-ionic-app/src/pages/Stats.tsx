@@ -9,8 +9,7 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
-  IonIcon,
-  IonProgressBar
+  IonIcon
 } from '@ionic/react'
 import {
   documentTextOutline,
@@ -81,32 +80,6 @@ const Stats: React.FC = () => {
         label: 'Nombre de distributions',
         data: Object.values(payments),
         backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'],
-        borderWidth: 2,
-        borderColor: '#ffffff'
-      }]
-    }
-  }, [items])
-
-  const amountChartData = useMemo(() => {
-    const amounts = items.reduce((acc: Record<string, number>, dist) => {
-      if (!acc[dist.status]) {
-        acc[dist.status] = 0
-      }
-      acc[dist.status] += parseFloat(String(dist.amount)) || 0
-      return acc
-    }, {})
-
-    return {
-      labels: ['Effectues', 'A repasser', 'Refus', 'Maison vide'],
-      datasets: [{
-        label: 'Montant (EUR)',
-        data: [
-          amounts.effectue || 0,
-          amounts.repasser || 0,
-          amounts.refus || 0,
-          amounts.maison_vide || 0
-        ],
-        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#6b7280'],
         borderWidth: 2,
         borderColor: '#ffffff'
       }]
