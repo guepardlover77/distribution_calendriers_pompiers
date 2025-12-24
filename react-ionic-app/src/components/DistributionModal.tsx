@@ -141,21 +141,42 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     setDetectionError('')
 
     try {
+      console.log('[Geolocation] Debut detection automatique...')
+
       // Verifier/demander la permission
-      const permission = await Geolocation.checkPermissions()
-      if (permission.location !== 'granted') {
-        const request = await Geolocation.requestPermissions()
-        if (request.location !== 'granted') {
-          setDetectionError('Permission de localisation refusee')
+      let permission
+      try {
+        permission = await Geolocation.checkPermissions()
+        console.log('[Geolocation] Statut permission:', permission.location)
+      } catch (permErr) {
+        console.error('[Geolocation] Erreur checkPermissions:', permErr)
+        // Sur certains appareils, on peut quand meme essayer de demander
+      }
+
+      if (!permission || permission.location !== 'granted') {
+        console.log('[Geolocation] Permission non accordee, demande en cours...')
+        try {
+          const request = await Geolocation.requestPermissions()
+          console.log('[Geolocation] Resultat demande permission:', request.location)
+          if (request.location !== 'granted') {
+            setDetectionError('Permission de localisation refusee. Activez-la dans les parametres.')
+            setAddressMode('error')
+            return
+          }
+        } catch (reqErr) {
+          console.error('[Geolocation] Erreur requestPermissions:', reqErr)
+          setDetectionError('Impossible de demander la permission de localisation')
           setAddressMode('error')
           return
         }
       }
 
+      console.log('[Geolocation] Permission OK, demarrage watchPosition...')
+
       // Utiliser watchPosition pour obtenir la position la plus precise
       // On collecte les positions pendant quelques secondes et on garde la meilleure
       const positions: { lat: number; lng: number; accuracy: number }[] = []
-      const maxWaitTime = 8000 // 8 secondes max
+      const maxWaitTime = 10000 // 10 secondes max
       const minAccuracy = 10 // On s'arrete si on atteint 10m de precision
       const startTime = Date.now()
 
@@ -163,20 +184,26 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
         return new Promise((resolve, reject) => {
           let watchId: string | null = null
           let timeoutId: NodeJS.Timeout | null = null
+          let isFinalized = false
 
           const cleanup = () => {
             if (watchId) {
+              console.log('[Geolocation] Arret watchPosition, id:', watchId)
               Geolocation.clearWatch({ id: watchId })
+              watchId = null
             }
             if (timeoutId) {
               clearTimeout(timeoutId)
+              timeoutId = null
             }
           }
 
           const finalize = () => {
+            if (isFinalized) return
+            isFinalized = true
             cleanup()
             if (positions.length === 0) {
-              reject(new Error('Aucune position obtenue'))
+              reject(new Error('Aucune position obtenue apres ' + maxWaitTime + 'ms'))
               return
             }
             // Trier par precision (accuracy la plus basse = meilleure precision)
@@ -188,11 +215,12 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
 
           // Timeout de securite
           timeoutId = setTimeout(() => {
-            console.log('[Geolocation] Timeout atteint, utilisation de la meilleure position disponible')
+            console.log('[Geolocation] Timeout atteint (' + maxWaitTime + 'ms)')
             finalize()
           }, maxWaitTime)
 
           // Demarrer la surveillance
+          console.log('[Geolocation] Appel watchPosition avec enableHighAccuracy=true')
           Geolocation.watchPosition(
             {
               enableHighAccuracy: true,
@@ -200,14 +228,17 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
               maximumAge: 0 // Forcer une nouvelle position, pas de cache
             },
             (position, err) => {
+              if (isFinalized) return
+
               if (err) {
-                console.error('[Geolocation] Erreur watchPosition:', err)
+                console.error('[Geolocation] Erreur callback watchPosition:', err)
+                // Ne pas abandonner tout de suite, on peut recevoir d'autres positions
                 return
               }
 
               if (position) {
                 const accuracy = position.coords.accuracy
-                console.log(`[Geolocation] Position recue: precision ${accuracy}m`)
+                console.log(`[Geolocation] Position recue: lat=${position.coords.latitude}, lng=${position.coords.longitude}, precision=${accuracy}m`)
 
                 positions.push({
                   lat: position.coords.latitude,
@@ -217,7 +248,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
 
                 // Si on a une excellente precision, on peut s'arreter
                 if (accuracy <= minAccuracy) {
-                  console.log('[Geolocation] Precision optimale atteinte')
+                  console.log('[Geolocation] Precision optimale atteinte (<= ' + minAccuracy + 'm)')
                   finalize()
                 }
                 // Sinon, on continue pendant au moins 3 secondes pour avoir plusieurs mesures
@@ -229,7 +260,9 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
             }
           ).then(id => {
             watchId = id
+            console.log('[Geolocation] watchPosition demarre, id:', id)
           }).catch(err => {
+            console.error('[Geolocation] Erreur demarrage watchPosition:', err)
             cleanup()
             reject(err)
           })
@@ -237,6 +270,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
       }
 
       const { latitude, longitude } = await getBestPosition()
+      console.log('[Geolocation] Position finale:', latitude, longitude)
 
       // Appeler l'API BAN pour le reverse geocoding
       const response = await fetch(

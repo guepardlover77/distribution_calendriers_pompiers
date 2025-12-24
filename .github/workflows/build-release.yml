@@ -42,6 +42,36 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
           echo "commit_date=$(git log -1 --pretty=format:'%ci')" >> $GITHUB_OUTPUT
 
+      - name: Calculate next version
+        id: version
+        run: |
+          # Recuperer le dernier tag de version (format vX.Y.Z ou vX.Y.Z-xxx)
+          LATEST_TAG=$(git tag -l 'v*' --sort=-version:refname | head -n 1)
+          echo "Latest tag found: $LATEST_TAG"
+
+          if [ -z "$LATEST_TAG" ]; then
+            # Pas de tag existant, commencer a v1.0.0
+            MAJOR=1
+            MINOR=0
+            PATCH=0
+          else
+            # Extraire les numeros de version (ignorer le suffixe -xxx si present)
+            VERSION_PART=$(echo "$LATEST_TAG" | sed 's/^v//' | sed 's/-.*//')
+            MAJOR=$(echo "$VERSION_PART" | cut -d. -f1)
+            MINOR=$(echo "$VERSION_PART" | cut -d. -f2)
+            PATCH=$(echo "$VERSION_PART" | cut -d. -f3)
+
+            # Incrementer le patch
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          echo "patch=$PATCH" >> $GITHUB_OUTPUT
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -82,7 +112,7 @@ jobs:
         working-directory: react-ionic-app/android/app
         run: |
           VERSION_CODE=$(date +%Y%m%d%H)
-          VERSION_NAME="1.0.0-${{ steps.commit_info.outputs.sha_short }}"
+          VERSION_NAME="${{ steps.version.outputs.version }}"
           sed -i "s/versionCode 1/versionCode $VERSION_CODE/" build.gradle
           sed -i "s/versionName \"1.0\"/versionName \"$VERSION_NAME\"/" build.gradle
           echo "Updated to versionCode: $VERSION_CODE, versionName: $VERSION_NAME"
@@ -103,18 +133,19 @@ jobs:
       - name: Rename APK files
         run: |
           mkdir -p artifacts
+          VERSION="${{ steps.version.outputs.version }}"
 
           # Copy debug APK
           if [ -f "react-ionic-app/android/app/build/outputs/apk/debug/app-debug.apk" ]; then
             cp react-ionic-app/android/app/build/outputs/apk/debug/app-debug.apk \
-               artifacts/calendriers-pompiers-${{ steps.commit_info.outputs.sha_short }}-debug.apk
+               artifacts/calendriers-pompiers-v${VERSION}-debug.apk
             echo "Debug APK copied"
           fi
 
           # Copy release APK if exists
           if [ -f "react-ionic-app/android/app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
             cp react-ionic-app/android/app/build/outputs/apk/release/app-release-unsigned.apk \
-               artifacts/calendriers-pompiers-${{ steps.commit_info.outputs.sha_short }}-release-unsigned.apk
+               artifacts/calendriers-pompiers-v${VERSION}-release-unsigned.apk
             echo "Release APK copied"
           fi
 
@@ -123,7 +154,7 @@ jobs:
       - name: Generate release tag
         id: tag
         run: |
-          TAG_NAME="v1.0.0-${{ steps.commit_info.outputs.sha_short }}"
+          TAG_NAME="v${{ steps.version.outputs.version }}"
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "Generated tag: $TAG_NAME"
 
@@ -131,15 +162,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
-          name: "Release ${{ steps.tag.outputs.tag_name }}"
+          name: "Calendriers Pompiers ${{ steps.tag.outputs.tag_name }}"
           body: |
-            ## Calendriers Pompiers - Build Automatique
+            ## Calendriers Pompiers - Version ${{ steps.version.outputs.version }}
 
+            **Version:** `${{ steps.version.outputs.version }}`
             **Commit:** `${{ steps.commit_info.outputs.sha_short }}`
-            **Auteur:** Matheo Milley-Arjalies
             **Date:** ${{ steps.commit_info.outputs.commit_date }}
 
-            ### Description du commit
+            ### Changements
 
             ${{ steps.commit_info.outputs.commit_message }}
 
@@ -147,8 +178,8 @@ jobs:
 
             ### Fichiers disponibles
 
-            - `calendriers-pompiers-*-debug.apk` : Version debug (pour tests)
-            - `calendriers-pompiers-*-release-unsigned.apk` : Version release non signee
+            - `calendriers-pompiers-v${{ steps.version.outputs.version }}-debug.apk` : Version debug (pour tests)
+            - `calendriers-pompiers-v${{ steps.version.outputs.version }}-release-unsigned.apk` : Version release non signee
 
             ### Installation
 
@@ -169,6 +200,6 @@ jobs:
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: apk-${{ steps.commit_info.outputs.sha_short }}
+          name: apk-v${{ steps.version.outputs.version }}
           path: artifacts/*.apk
           retention-days: 30
