@@ -35,11 +35,11 @@ jobs:
         id: commit_info
         run: |
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          # Get commit message and filter out Claude-related lines
           echo "commit_message<<EOF" >> $GITHUB_OUTPUT
-          git log -1 --pretty=format:"%B" >> $GITHUB_OUTPUT
+          git log -1 --pretty=format:"%B" | grep -v -E "(Claude|Co-Authored-By|Generated with)" >> $GITHUB_OUTPUT || true
           echo "" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          echo "commit_author=$(git log -1 --pretty=format:'%an')" >> $GITHUB_OUTPUT
           echo "commit_date=$(git log -1 --pretty=format:'%ci')" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
@@ -136,7 +136,7 @@ jobs:
             ## Calendriers Pompiers - Build Automatique
 
             **Commit:** `${{ steps.commit_info.outputs.sha_short }}`
-            **Auteur:** ${{ steps.commit_info.outputs.commit_author }}
+            **Auteur:** Matheo Milley-Arjalies
             **Date:** ${{ steps.commit_info.outputs.commit_date }}
 
             ### Description du commit
@@ -148,16 +148,16 @@ jobs:
             ### Fichiers disponibles
 
             - `calendriers-pompiers-*-debug.apk` : Version debug (pour tests)
-            - `calendriers-pompiers-*-release-unsigned.apk` : Version release non signée
+            - `calendriers-pompiers-*-release-unsigned.apk` : Version release non signee
 
             ### Installation
 
-            1. Téléchargez le fichier APK debug
-            2. Sur votre téléphone Android, activez "Sources inconnues" dans les paramètres
+            1. Telechargez le fichier APK debug
+            2. Sur votre telephone Android, activez "Sources inconnues" dans les parametres
             3. Installez l'APK
 
             ---
-            *Build automatique généré par GitHub Actions*
+            *Build automatique genere par GitHub Actions*
           files: |
             artifacts/*.apk
           draft: false
