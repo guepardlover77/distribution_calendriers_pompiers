@@ -108,6 +108,38 @@ jobs:
         working-directory: react-ionic-app
         run: npx cap sync android
 
+      - name: Fix Play Services Location compatibility
+        working-directory: react-ionic-app/android
+        run: |
+          # Ajouter la resolution de dependance pour play-services-location
+          # Cela corrige le warning D8 avec la version 21.1.0
+          cat >> app/build.gradle << 'EOF'
+
+          // Force une version compatible de Google Play Services Location
+          configurations.all {
+              resolutionStrategy {
+                  force 'com.google.android.gms:play-services-location:21.3.0'
+              }
+          }
+          EOF
+
+          echo "Play Services Location fix applied"
+
+      - name: Verify and fix Android permissions
+        working-directory: react-ionic-app/android/app/src/main
+        run: |
+          echo "=== Current AndroidManifest.xml ==="
+          cat AndroidManifest.xml
+
+          # Vérifier que les permissions de localisation sont présentes
+          if ! grep -q "ACCESS_FINE_LOCATION" AndroidManifest.xml; then
+            echo "Adding missing location permissions..."
+            sed -i 's|</manifest>|    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n</manifest>|' AndroidManifest.xml
+          fi
+
+          echo "=== Updated AndroidManifest.xml ==="
+          cat AndroidManifest.xml
+
       - name: Update version in build.gradle
         working-directory: react-ionic-app/android/app
         run: |

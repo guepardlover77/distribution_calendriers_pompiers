@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Geolocation, PermissionStatus } from '@capacitor/geolocation'
+import { Capacitor } from '@capacitor/core'
 
 export const useGeolocationPermission = () => {
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus | null>(null)
@@ -7,14 +8,18 @@ export const useGeolocationPermission = () => {
 
   const checkAndRequestPermission = async (): Promise<boolean> => {
     try {
-      console.log('[Geolocation] Checking permissions...')
+      const platform = Capacitor.getPlatform()
+      const isNative = Capacitor.isNativePlatform()
+      console.log('[Geolocation] Platform:', platform, 'isNative:', isNative)
 
       // Vérifier le statut actuel
+      console.log('[Geolocation] Checking permissions...')
       const status = await Geolocation.checkPermissions()
-      console.log('[Geolocation] Current permission status:', status.location)
+      console.log('[Geolocation] Current permission status:', status.location, 'coarseLocation:', status.coarseLocation)
       setPermissionStatus(status)
 
       if (status.location === 'granted') {
+        console.log('[Geolocation] Permission already granted')
         setIsLoading(false)
         return true
       }
@@ -24,14 +29,14 @@ export const useGeolocationPermission = () => {
       if (status.location !== 'denied') {
         console.log('[Geolocation] Requesting permission...')
         const requestResult = await Geolocation.requestPermissions()
-        console.log('[Geolocation] Permission request result:', requestResult.location)
+        console.log('[Geolocation] Permission request result:', requestResult.location, 'coarseLocation:', requestResult.coarseLocation)
         setPermissionStatus(requestResult)
         setIsLoading(false)
         return requestResult.location === 'granted'
       }
 
       // Permission refusée définitivement
-      console.log('[Geolocation] Permission was denied')
+      console.log('[Geolocation] Permission was denied permanently')
       setIsLoading(false)
       return false
     } catch (error) {
@@ -42,8 +47,13 @@ export const useGeolocationPermission = () => {
   }
 
   useEffect(() => {
-    // Demander la permission au montage du composant
-    checkAndRequestPermission()
+    // Attendre un court instant pour que Capacitor soit prêt
+    const timer = setTimeout(() => {
+      console.log('[Geolocation] Starting permission check...')
+      checkAndRequestPermission()
+    }, 500)
+
+    return () => clearTimeout(timer)
   }, [])
 
   return {
