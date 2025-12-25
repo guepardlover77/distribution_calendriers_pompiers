@@ -17,7 +17,7 @@ import {
   IonIcon,
   useIonToast
 } from '@ionic/react'
-import { locationOutline, searchOutline, checkmarkCircle, refreshOutline, chevronForwardOutline, alertCircleOutline } from 'ionicons/icons'
+import { locationOutline, searchOutline, checkmarkCircle, refreshOutline, chevronForwardOutline, alertCircleOutline, homeOutline, keypadOutline } from 'ionicons/icons'
 import { Geolocation } from '@capacitor/geolocation'
 import { useDistributionsStore } from '@/stores/distributionsStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -30,29 +30,37 @@ interface AddressFeature {
     citycode?: string
     city?: string
     postcode?: string
+    street?: string        // Nom de rue (fourni par BAN pour type=housenumber)
+    housenumber?: string   // Numero de rue
+    score?: number         // Score de confiance
+    type?: string          // "housenumber" | "street" | "locality"
   }
   geometry: {
     coordinates: [number, number] // [lng, lat]
   }
 }
 
-interface CityFeature {
-  properties: {
-    label: string
-    citycode: string
-    city: string
-    context: string
-  }
-}
-
-// Cle localStorage pour la ville persistante
+// Cles localStorage
 const SAVED_CITY_KEY = 'pompiers_selected_city'
+const SAVED_STREET_KEY = 'pompiers_saved_street'
 
 interface SavedCity {
   label: string
   citycode: string
   city: string
 }
+
+// Rue sauvegardee pour saisie rapide du numero
+interface SavedStreet {
+  streetName: string      // "Rue de la Republique"
+  city: string            // "Villeurbanne"
+  citycode: string        // "69266"
+  postcode: string        // "69100"
+  fullContext: string     // "Rhone, Auvergne-Rhone-Alpes"
+}
+
+// Mode de saisie rapide du numero
+type QuickNumberState = 'idle' | 'validating' | 'valid' | 'multiple' | 'not_found'
 
 // Mode de saisie d'adresse
 type AddressMode = 'detecting' | 'detected' | 'error'
@@ -87,17 +95,11 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
   const [detectedAddress, setDetectedAddress] = useState<DetectedAddress | null>(null)
   const [detectionError, setDetectionError] = useState<string>('')
 
-  // Etat pour la ville (persistante) - utilise en mode manuel
+  // Etat pour la ville (persistante) - utilise par useDetectedAddress
   const [selectedCity, setSelectedCity] = useState<SavedCity | null>(() => {
     const saved = localStorage.getItem(SAVED_CITY_KEY)
     return saved ? JSON.parse(saved) : null
   })
-  const [cityQuery, setCityQuery] = useState('')
-  const [cityResults, setCityResults] = useState<CityFeature[]>([])
-  const [showCityResults, setShowCityResults] = useState(false)
-  const [searchingCity, setSearchingCity] = useState(false)
-  const citySearchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const cityAbortRef = useRef<AbortController | null>(null)
 
   // Etat pour la recherche d'adresse manuelle
   const [addressQuery, setAddressQuery] = useState(distribution?.address || '')
@@ -107,6 +109,18 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
   const [searching, setSearching] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const addressAbortRef = useRef<AbortController | null>(null)
+
+  // === MODE A: Saisie rapide du numero (meme rue) ===
+  const [savedStreet, setSavedStreet] = useState<SavedStreet | null>(() => {
+    const saved = localStorage.getItem(SAVED_STREET_KEY)
+    return saved ? JSON.parse(saved) : null
+  })
+  const [quickNumber, setQuickNumber] = useState('')
+  const [quickNumberState, setQuickNumberState] = useState<QuickNumberState>('idle')
+  const [quickNumberResults, setQuickNumberResults] = useState<AddressFeature[]>([])
+  const [quickNumberError, setQuickNumberError] = useState('')
+  const quickNumberTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const quickNumberAbortRef = useRef<AbortController | null>(null)
 
   const [formData, setFormData] = useState({
     address: distribution?.address || '',
@@ -164,6 +178,178 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     } catch {
       return null
     }
+  }
+
+  // === FONCTIONS POUR MODE A: Saisie rapide du numero ===
+
+  // Extraire les infos de rue depuis une reponse BAN
+  const extractStreetFromFeature = (feature: AddressFeature): SavedStreet | null => {
+    const props = feature.properties
+
+    // L'API BAN fournit 'street' pour les resultats de type housenumber
+    if (props.street && props.city && props.citycode) {
+      return {
+        streetName: props.street,
+        city: props.city,
+        citycode: props.citycode,
+        postcode: props.postcode || '',
+        fullContext: props.context || ''
+      }
+    }
+
+    // Fallback: parser depuis le label en enlevant le numero
+    if (props.housenumber && props.label) {
+      const streetName = props.label
+        .replace(new RegExp(`^${props.housenumber}\\s+`), '')
+        .replace(/,.*$/, '')
+        .trim()
+
+      if (streetName && props.city && props.citycode) {
+        return {
+          streetName,
+          city: props.city,
+          citycode: props.citycode,
+          postcode: props.postcode || '',
+          fullContext: props.context || ''
+        }
+      }
+    }
+
+    return null
+  }
+
+  // Sauvegarder/effacer la rue
+  const saveStreet = (street: SavedStreet) => {
+    setSavedStreet(street)
+    localStorage.setItem(SAVED_STREET_KEY, JSON.stringify(street))
+  }
+
+  const clearSavedStreet = () => {
+    setSavedStreet(null)
+    localStorage.removeItem(SAVED_STREET_KEY)
+    setQuickNumber('')
+    setQuickNumberState('idle')
+    setQuickNumberResults([])
+    setQuickNumberError('')
+  }
+
+  // Valider un numero via l'API BAN
+  const validateQuickNumber = async (number: string) => {
+    if (!savedStreet || !number.trim()) {
+      setQuickNumberResults([])
+      setQuickNumberState('idle')
+      return
+    }
+
+    // Annuler la requete precedente
+    if (quickNumberAbortRef.current) {
+      quickNumberAbortRef.current.abort()
+    }
+    quickNumberAbortRef.current = new AbortController()
+
+    setQuickNumberState('validating')
+    setQuickNumberError('')
+
+    try {
+      const query = `${number.trim()} ${savedStreet.streetName}`
+      const url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&citycode=${savedStreet.citycode}&limit=3&type=housenumber`
+
+      const response = await fetch(url, {
+        signal: quickNumberAbortRef.current.signal
+      })
+
+      if (!response.ok) throw new Error('API error')
+
+      const data = await response.json()
+      const features: AddressFeature[] = data.features || []
+
+      if (features.length === 0) {
+        setQuickNumberState('not_found')
+        setQuickNumberError(`Le n${number} n'existe pas sur ${savedStreet.streetName}`)
+        setQuickNumberResults([])
+        return
+      }
+
+      // Filtrer les resultats qui correspondent bien a la rue
+      const matchingResults = features.filter(f => {
+        const street = f.properties.street?.toLowerCase() || ''
+        return street === savedStreet.streetName.toLowerCase()
+      })
+
+      if (matchingResults.length === 0) {
+        // Prendre les resultats meme s'ils ne matchent pas exactement
+        setQuickNumberResults(features)
+        setQuickNumberState('multiple')
+        return
+      }
+
+      setQuickNumberResults(matchingResults)
+
+      // Auto-selection si un seul resultat avec bon score
+      if (matchingResults.length === 1 && (matchingResults[0].properties.score || 0) > 0.6) {
+        selectQuickNumberResult(matchingResults[0])
+      } else {
+        setQuickNumberState('multiple')
+      }
+
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        setQuickNumberState('not_found')
+        setQuickNumberError('Erreur de recherche')
+      }
+    }
+  }
+
+  // Handler pour l'input du numero avec debounce
+  const handleQuickNumberInput = (value: string) => {
+    // Accepter uniquement les chiffres et lettres (pour "12 bis")
+    const cleanValue = value.replace(/[^0-9a-zA-Z\s]/g, '').trim()
+    setQuickNumber(cleanValue)
+
+    if (quickNumberTimeoutRef.current) {
+      clearTimeout(quickNumberTimeoutRef.current)
+    }
+
+    if (!cleanValue) {
+      setQuickNumberState('idle')
+      setQuickNumberResults([])
+      setQuickNumberError('')
+      return
+    }
+
+    // Debounce 400ms
+    quickNumberTimeoutRef.current = setTimeout(() => {
+      validateQuickNumber(cleanValue)
+    }, 400)
+  }
+
+  // Selectionner un resultat du mode rapide
+  const selectQuickNumberResult = (feature: AddressFeature) => {
+    const [lng, lat] = feature.geometry.coordinates
+
+    setFormData(prev => ({
+      ...prev,
+      address: feature.properties.label,
+      lat,
+      lng
+    }))
+    setAddressQuery(feature.properties.label)
+    setAddressSelected(true)
+    setQuickNumberState('valid')
+    setQuickNumberResults([])
+
+    // Mettre a jour la rue sauvegardee
+    const street = extractStreetFromFeature(feature)
+    if (street) {
+      saveStreet(street)
+    }
+
+    presentToast({
+      message: 'Adresse validee',
+      duration: 1500,
+      color: 'success',
+      position: 'top'
+    })
   }
 
   // Detection automatique de l'adresse - Version optimisee
@@ -349,6 +535,22 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
       }
       setSelectedCity(city)
       localStorage.setItem(SAVED_CITY_KEY, JSON.stringify(city))
+
+      // Extraire et sauvegarder la rue depuis l'adresse GPS
+      // Format typique: "17 Rue de la Republique, 69100 Villeurbanne"
+      const streetMatch = detectedAddress.label.match(/^\d+[a-zA-Z]?\s+(.+?),/)
+      if (streetMatch) {
+        const street: SavedStreet = {
+          streetName: streetMatch[1],
+          city: detectedAddress.city,
+          citycode: detectedAddress.citycode,
+          postcode: detectedAddress.postcode,
+          fullContext: ''
+        }
+        saveStreet(street)
+        setQuickNumber('')
+        setQuickNumberState('idle')
+      }
     }
 
     presentToast({
@@ -357,77 +559,6 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
       color: 'success',
       position: 'top'
     })
-  }
-
-  // Recherche de ville via l'API Base Adresse Nationale
-  const searchCity = async (query: string) => {
-    if (query.length < 2) {
-      setCityResults([])
-      setShowCityResults(false)
-      return
-    }
-
-    // Annuler la requete precedente
-    if (cityAbortRef.current) {
-      cityAbortRef.current.abort()
-    }
-    cityAbortRef.current = new AbortController()
-
-    setSearchingCity(true)
-    try {
-      const response = await fetch(
-        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=5`,
-        { signal: cityAbortRef.current.signal }
-      )
-      if (response.ok) {
-        const data = await response.json()
-        setCityResults(data.features || [])
-        setShowCityResults(true)
-      }
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        console.error('Erreur recherche ville:', err)
-      }
-    } finally {
-      setSearchingCity(false)
-    }
-  }
-
-  // Debounce de la recherche ville (200ms pour plus de reactivite)
-  const handleCityInput = (value: string) => {
-    setCityQuery(value)
-
-    if (citySearchTimeoutRef.current) {
-      clearTimeout(citySearchTimeoutRef.current)
-    }
-
-    citySearchTimeoutRef.current = setTimeout(() => {
-      searchCity(value)
-    }, 200)
-  }
-
-  // Selectionner une ville
-  const selectCity = (feature: CityFeature) => {
-    const city: SavedCity = {
-      label: feature.properties.label,
-      citycode: feature.properties.citycode,
-      city: feature.properties.city
-    }
-    setSelectedCity(city)
-    localStorage.setItem(SAVED_CITY_KEY, JSON.stringify(city))
-    setCityQuery('')
-    setShowCityResults(false)
-    setCityResults([])
-    setAddressQuery('')
-    setAddressSelected(false)
-  }
-
-  // Effacer la ville selectionnee
-  const clearCity = () => {
-    setSelectedCity(null)
-    localStorage.removeItem(SAVED_CITY_KEY)
-    setAddressQuery('')
-    setAddressSelected(false)
   }
 
   // Recherche d'adresse via l'API Base Adresse Nationale
@@ -493,6 +624,22 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
     setAddressSelected(true)
     setShowResults(false)
     setAddressResults([])
+
+    // Extraire et sauvegarder la rue pour le mode rapide
+    const street = extractStreetFromFeature(feature)
+    if (street) {
+      saveStreet(street)
+      // Reinitialiser le mode rapide pour la prochaine saisie
+      setQuickNumber('')
+      setQuickNumberState('idle')
+    }
+
+    presentToast({
+      message: 'Adresse validee',
+      duration: 1500,
+      color: 'success',
+      position: 'top'
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -607,8 +754,131 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
                     padding: '16px',
                     marginBottom: '16px'
                   }}>
-                    {/* Barre de recherche d'adresse - TOUJOURS VISIBLE */}
-                    <div style={{ marginBottom: '16px' }}>
+                    {/* === MODE A: Saisie rapide du numero (si rue sauvegardee) === */}
+                    {savedStreet && (
+                      <>
+                        {/* En-tete de la rue active */}
+                        <div style={{
+                          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                          borderRadius: '10px',
+                          padding: '14px',
+                          marginBottom: '12px',
+                          color: 'white'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <div style={{ fontSize: '11px', opacity: 0.9, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <IonIcon icon={homeOutline} style={{ fontSize: '12px' }} />
+                                RUE ACTIVE
+                              </div>
+                              <div style={{ fontSize: '16px', fontWeight: 700 }}>{savedStreet.streetName}</div>
+                              <div style={{ fontSize: '13px', opacity: 0.9 }}>{savedStreet.city} ({savedStreet.postcode})</div>
+                            </div>
+                            <IonButton
+                              fill="clear"
+                              size="small"
+                              style={{ '--color': 'white', margin: '-4px -8px 0 0' }}
+                              onClick={clearSavedStreet}
+                            >
+                              Changer
+                            </IonButton>
+                          </div>
+                        </div>
+
+                        {/* Champ de saisie du numero */}
+                        <div style={{ marginBottom: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <IonIcon icon={keypadOutline} style={{ color: 'var(--ion-color-primary)' }} />
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
+                              Numero
+                            </span>
+                            {quickNumberState === 'validating' && (
+                              <IonSpinner name="crescent" style={{ width: '16px', height: '16px', marginLeft: 'auto' }} />
+                            )}
+                            {quickNumberState === 'valid' && (
+                              <IonIcon icon={checkmarkCircle} style={{ color: '#16a34a', marginLeft: 'auto' }} />
+                            )}
+                          </div>
+
+                          <IonItem style={{ '--background': 'var(--card-background)', '--border-radius': '10px' }}>
+                            <IonInput
+                              value={quickNumber}
+                              onIonInput={(e) => handleQuickNumberInput(e.detail.value || '')}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9a-zA-Z]*"
+                              placeholder="Entrez le numero (ex: 17, 12 bis)"
+                              disabled={loading}
+                              style={{ fontSize: '20px', fontWeight: 600, textAlign: 'center' }}
+                            />
+                          </IonItem>
+
+                          {/* Resultats multiples */}
+                          {quickNumberState === 'multiple' && quickNumberResults.length > 0 && (
+                            <div style={{
+                              marginTop: '8px',
+                              background: 'var(--card-background)',
+                              borderRadius: '8px',
+                              border: '1px solid var(--border-color-medium)',
+                              overflow: 'hidden'
+                            }}>
+                              {quickNumberResults.map((feature, index) => (
+                                <div
+                                  key={index}
+                                  onClick={() => selectQuickNumberResult(feature)}
+                                  style={{
+                                    padding: '12px',
+                                    cursor: 'pointer',
+                                    borderBottom: index < quickNumberResults.length - 1 ? '1px solid var(--border-color-medium)' : 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px'
+                                  }}
+                                >
+                                  <IonIcon icon={chevronForwardOutline} style={{ color: 'var(--ion-color-primary)' }} />
+                                  <div>
+                                    <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-primary)' }}>{feature.properties.label}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Erreur */}
+                          {quickNumberState === 'not_found' && quickNumberError && (
+                            <div style={{
+                              marginTop: '8px',
+                              padding: '10px 12px',
+                              background: '#fef2f2',
+                              borderRadius: '8px',
+                              fontSize: '13px',
+                              color: '#991b1b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              <IonIcon icon={alertCircleOutline} />
+                              {quickNumberError}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Separateur */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          margin: '16px 0'
+                        }}>
+                          <div style={{ flex: 1, height: '1px', background: 'var(--border-color-medium)' }} />
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ou</span>
+                          <div style={{ flex: 1, height: '1px', background: 'var(--border-color-medium)' }} />
+                        </div>
+                      </>
+                    )}
+
+                    {/* === MODE B: Recherche complete === */}
+                    <div style={{ marginBottom: savedStreet ? '0' : '16px' }}>
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -617,145 +887,72 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
                       }}>
                         <IonIcon icon={searchOutline} style={{ color: 'var(--ion-color-primary)' }} />
                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
-                          Rechercher une adresse
+                          {savedStreet ? 'Autre adresse' : 'Rechercher une adresse'}
                         </span>
                       </div>
 
-                      {/* Selection de la ville */}
-                      <div style={{ marginBottom: '8px', position: 'relative' }}>
-                        {selectedCity ? (
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '8px 12px',
-                            background: '#e0f2fe',
-                            borderRadius: '8px',
-                            border: '1px solid #0ea5e9'
-                          }}>
-                            <div>
-                              <div style={{ fontSize: '11px', color: '#0369a1' }}>Ville</div>
-                              <div style={{ fontWeight: 600, color: '#0c4a6e', fontSize: '14px' }}>{selectedCity.label}</div>
-                            </div>
-                            <IonButton fill="clear" size="small" onClick={clearCity}>
-                              Changer
-                            </IonButton>
-                          </div>
-                        ) : (
-                          <div style={{ position: 'relative' }}>
-                            <IonItem style={{ '--background': 'var(--card-background)', '--border-radius': '8px' }}>
-                              <IonInput
-                                value={cityQuery}
-                                onIonInput={(e) => handleCityInput(e.detail.value || '')}
-                                onIonFocus={() => cityResults.length > 0 && setShowCityResults(true)}
-                                label="Ville"
-                                labelPlacement="floating"
-                                type="text"
-                                placeholder="Rechercher une ville..."
-                                disabled={loading}
-                              />
-                              {searchingCity && <IonSpinner name="crescent" slot="end" />}
-                            </IonItem>
+                      <div style={{ position: 'relative' }}>
+                        <IonItem style={{ '--background': 'var(--card-background)', '--border-radius': '8px' }}>
+                          <IonInput
+                            value={addressQuery}
+                            onIonInput={(e) => handleAddressInput(e.detail.value || '')}
+                            onIonFocus={() => addressResults.length > 0 && setShowResults(true)}
+                            type="text"
+                            placeholder="12 rue de la paix lyon..."
+                            disabled={loading}
+                          />
+                          {searching && <IonSpinner name="crescent" slot="end" />}
+                        </IonItem>
 
-                            {showCityResults && cityResults.length > 0 && (
-                              <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                right: 0,
-                                background: 'var(--dropdown-background)',
-                                border: '1px solid var(--dropdown-border)',
-                                borderRadius: '8px',
-                                maxHeight: '150px',
-                                overflowY: 'auto',
-                                zIndex: 1000,
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                              }}>
-                                {cityResults.map((feature, index) => (
-                                  <div
-                                    key={index}
-                                    onClick={() => selectCity(feature)}
-                                    style={{
-                                      padding: '10px 14px',
-                                      cursor: 'pointer',
-                                      borderBottom: index < cityResults.length - 1 ? '1px solid var(--border-color-medium)' : 'none'
-                                    }}
-                                  >
-                                    <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-primary)' }}>{feature.properties.label}</div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{feature.properties.context}</div>
-                                  </div>
-                                ))}
+                        {showResults && addressResults.length > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            background: 'var(--dropdown-background)',
+                            border: '1px solid var(--dropdown-border)',
+                            borderRadius: '8px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                          }}>
+                            {addressResults.map((feature, index) => (
+                              <div
+                                key={index}
+                                onClick={() => selectAddress(feature)}
+                                style={{
+                                  padding: '12px 14px',
+                                  cursor: 'pointer',
+                                  borderBottom: index < addressResults.length - 1 ? '1px solid var(--border-color-medium)' : 'none'
+                                }}
+                              >
+                                <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-primary)' }}>{feature.properties.label}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{feature.properties.context}</div>
                               </div>
-                            )}
+                            ))}
                           </div>
                         )}
                       </div>
-
-                      {/* Recherche d'adresse */}
-                      {selectedCity && (
-                        <div style={{ position: 'relative' }}>
-                          <IonItem style={{ '--background': 'var(--card-background)', '--border-radius': '8px' }}>
-                            <IonInput
-                              value={addressQuery}
-                              onIonInput={(e) => handleAddressInput(e.detail.value || '')}
-                              onIonFocus={() => addressResults.length > 0 && setShowResults(true)}
-                              label="Adresse"
-                              labelPlacement="floating"
-                              type="text"
-                              placeholder={`Adresse a ${selectedCity.city}...`}
-                              disabled={loading}
-                            />
-                            {searching && <IonSpinner name="crescent" slot="end" />}
-                          </IonItem>
-
-                          {showResults && addressResults.length > 0 && (
-                            <div style={{
-                              position: 'absolute',
-                              top: '100%',
-                              left: 0,
-                              right: 0,
-                              background: 'var(--dropdown-background)',
-                              border: '1px solid var(--dropdown-border)',
-                              borderRadius: '8px',
-                              maxHeight: '150px',
-                              overflowY: 'auto',
-                              zIndex: 1000,
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                            }}>
-                              {addressResults.map((feature, index) => (
-                                <div
-                                  key={index}
-                                  onClick={() => selectAddress(feature)}
-                                  style={{
-                                    padding: '10px 14px',
-                                    cursor: 'pointer',
-                                    borderBottom: index < addressResults.length - 1 ? '1px solid var(--border-color-medium)' : 'none'
-                                  }}
-                                >
-                                  <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-primary)' }}>{feature.properties.label}</div>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{feature.properties.context}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
 
-                    {/* Separateur */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      margin: '16px 0'
-                    }}>
-                      <div style={{ flex: 1, height: '1px', background: 'var(--border-color-medium)' }} />
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ou</span>
-                      <div style={{ flex: 1, height: '1px', background: 'var(--border-color-medium)' }} />
-                    </div>
+                    {/* Separateur avant GPS (si pas de savedStreet) */}
+                    {!savedStreet && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        margin: '16px 0'
+                      }}>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--border-color-medium)' }} />
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ou</span>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--border-color-medium)' }} />
+                      </div>
+                    )}
 
-                    {/* Section GPS */}
-                    <div>
+                    {/* === Section GPS === */}
+                    <div style={{ marginTop: savedStreet ? '0' : '0' }}>
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -764,7 +961,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
                       }}>
                         <IonIcon icon={locationOutline} style={{ color: 'var(--ion-color-success)' }} />
                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
-                          Detection automatique
+                          Detection GPS
                         </span>
                       </div>
 
@@ -779,9 +976,9 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
                           borderRadius: '8px',
                           border: '1px solid var(--border-color)'
                         }}>
-                          <IonSpinner name="crescent" style={{ width: '24px', height: '24px' }} />
+                          <IonSpinner name="crescent" style={{ width: '20px', height: '20px' }} />
                           <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-                            Detection GPS en cours...
+                            Detection en cours...
                           </span>
                         </div>
                       )}
@@ -801,10 +998,10 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
                             cursor: 'pointer'
                           }}
                         >
-                          <IonIcon icon={checkmarkCircle} style={{ fontSize: '24px', color: '#16a34a', flexShrink: 0 }} />
+                          <IonIcon icon={checkmarkCircle} style={{ fontSize: '22px', color: '#16a34a', flexShrink: 0 }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '11px', color: '#166534', marginBottom: '2px' }}>
-                              Adresse detectee - Appuyez pour utiliser
+                              Appuyez pour utiliser
                             </div>
                             <div style={{
                               fontSize: '14px',
@@ -817,7 +1014,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
                               {detectedAddress.label}
                             </div>
                           </div>
-                          <IonIcon icon={chevronForwardOutline} style={{ fontSize: '20px', color: '#16a34a' }} />
+                          <IonIcon icon={chevronForwardOutline} style={{ fontSize: '18px', color: '#16a34a' }} />
                         </div>
                       )}
 
@@ -832,7 +1029,7 @@ const DistributionModal: React.FC<DistributionModalProps> = ({ distribution, onD
                           borderRadius: '8px',
                           border: '1px solid #fecaca'
                         }}>
-                          <IonIcon icon={alertCircleOutline} style={{ fontSize: '24px', color: '#dc2626', flexShrink: 0 }} />
+                          <IonIcon icon={alertCircleOutline} style={{ fontSize: '20px', color: '#dc2626', flexShrink: 0 }} />
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: '13px', color: '#991b1b' }}>
                               {detectionError}
