@@ -19,7 +19,7 @@ import {
   useIonViewDidEnter,
   useIonViewWillEnter
 } from '@ionic/react'
-import { addOutline, locateOutline, logOutOutline, brushOutline, layersOutline, checkmarkCircle } from 'ionicons/icons'
+import { addOutline, locateOutline, logOutOutline, brushOutline, layersOutline, checkmarkCircle, syncOutline } from 'ionicons/icons'
 import { Geolocation } from '@capacitor/geolocation'
 import L from 'leaflet'
 import 'leaflet-draw'
@@ -113,6 +113,9 @@ const Map: React.FC = () => {
   const zonesLayerRef = useRef<L.FeatureGroup | null>(null)
   const drawControlRef = useRef<L.Control.Draw | null>(null)
   const tileLayerRef = useRef<L.TileLayer | null>(null)
+  const gpsMarkerRef = useRef<L.CircleMarker | null>(null)
+  const gpsAccuracyCircleRef = useRef<L.Circle | null>(null)
+  const gpsWatchIdRef = useRef<string | null>(null)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [drawMode, setDrawMode] = useState(false)
@@ -124,6 +127,7 @@ const Map: React.FC = () => {
   const [selectedTheme, setSelectedTheme] = useState<string>('voyager')
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false)
   const [editingDistribution, setEditingDistribution] = useState<Distribution | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   // Demander la permission de geolocalisation
   const requestLocationPermission = async () => {
@@ -167,6 +171,42 @@ const Map: React.FC = () => {
     fetchAll()
     fetchZones()
   })
+
+  // Mettre a jour le marqueur de position GPS
+  const updateGpsMarker = useCallback((latitude: number, longitude: number, accuracy?: number) => {
+    if (!mapRef.current) return
+
+    // Supprimer les anciens marqueurs GPS
+    if (gpsMarkerRef.current) {
+      mapRef.current.removeLayer(gpsMarkerRef.current)
+    }
+    if (gpsAccuracyCircleRef.current) {
+      mapRef.current.removeLayer(gpsAccuracyCircleRef.current)
+    }
+
+    // Cercle de precision (si disponible)
+    if (accuracy && accuracy > 0) {
+      gpsAccuracyCircleRef.current = L.circle([latitude, longitude], {
+        radius: accuracy,
+        color: '#4285F4',
+        fillColor: '#4285F4',
+        fillOpacity: 0.15,
+        weight: 1
+      }).addTo(mapRef.current)
+    }
+
+    // Point GPS (cercle bleu avec bordure blanche)
+    gpsMarkerRef.current = L.circleMarker([latitude, longitude], {
+      radius: 8,
+      color: '#ffffff',
+      fillColor: '#4285F4',
+      fillOpacity: 1,
+      weight: 3
+    }).addTo(mapRef.current)
+
+    // Tooltip au survol
+    gpsMarkerRef.current.bindTooltip('Ma position', { direction: 'top', offset: [0, -10] })
+  }, [])
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -379,6 +419,7 @@ const Map: React.FC = () => {
   }, [])
 
   // Centrer automatiquement sur la position de l'utilisateur au premier chargement
+  // et demarrer le suivi GPS
   useEffect(() => {
     const initializeLocation = async () => {
       if (mapRef.current) {
@@ -392,14 +433,26 @@ const Map: React.FC = () => {
             }
           }
 
-          // Obtenir la position
+          // Obtenir la position initiale
           const position = await Geolocation.getCurrentPosition({
             enableHighAccuracy: true,
             timeout: 10000
           })
 
-          const { latitude, longitude } = position.coords
+          const { latitude, longitude, accuracy } = position.coords
           mapRef.current?.setView([latitude, longitude], 15)
+          updateGpsMarker(latitude, longitude, accuracy)
+
+          // Demarrer le suivi continu de la position
+          const watchId = await Geolocation.watchPosition(
+            { enableHighAccuracy: true },
+            (pos, err) => {
+              if (pos && !err) {
+                updateGpsMarker(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy)
+              }
+            }
+          )
+          gpsWatchIdRef.current = watchId
         } catch (error) {
           // En cas d'erreur, garder la vue par defaut
           console.log('Geolocalisation non disponible:', error)
@@ -412,8 +465,14 @@ const Map: React.FC = () => {
       initializeLocation()
     }, 800)
 
-    return () => clearTimeout(timer)
-  }, [])
+    return () => {
+      clearTimeout(timer)
+      // Arreter le suivi GPS au demontage
+      if (gpsWatchIdRef.current) {
+        Geolocation.clearWatch({ id: gpsWatchIdRef.current })
+      }
+    }
+  }, [updateGpsMarker])
 
   // Update markers when distributions change
   useEffect(() => {
@@ -580,8 +639,9 @@ const Map: React.FC = () => {
         timeout: 10000
       })
 
-      const { latitude, longitude } = position.coords
+      const { latitude, longitude, accuracy } = position.coords
       mapRef.current?.setView([latitude, longitude], 15)
+      updateGpsMarker(latitude, longitude, accuracy)
 
       presentToast({
         message: 'Position obtenue',
@@ -598,6 +658,31 @@ const Map: React.FC = () => {
         color: 'danger',
         position: 'top'
       })
+    }
+  }
+
+  const handleSync = async () => {
+    if (isSyncing) return
+
+    setIsSyncing(true)
+    try {
+      await Promise.all([fetchAll(), fetchZones()])
+      presentToast({
+        message: 'Synchronisation terminee',
+        duration: 2000,
+        color: 'success',
+        position: 'top'
+      })
+    } catch (error) {
+      console.error('[Map] Sync error:', error)
+      presentToast({
+        message: 'Erreur de synchronisation',
+        duration: 2000,
+        color: 'danger',
+        position: 'top'
+      })
+    } finally {
+      setIsSyncing(false)
     }
   }
 
@@ -696,6 +781,12 @@ const Map: React.FC = () => {
           <IonFab vertical="bottom" horizontal="start" slot="fixed" style={{ bottom: '100px' }}>
             <IonFabButton size="small" onClick={centerOnLocation} color="light">
               <IonIcon icon={locateOutline} />
+            </IonFabButton>
+          </IonFab>
+
+          <IonFab vertical="bottom" horizontal="start" slot="fixed" style={{ bottom: '160px' }}>
+            <IonFabButton size="small" onClick={handleSync} color="light" disabled={isSyncing}>
+              <IonIcon icon={syncOutline} className={isSyncing ? 'spin-animation' : ''} />
             </IonFabButton>
           </IonFab>
         </div>
