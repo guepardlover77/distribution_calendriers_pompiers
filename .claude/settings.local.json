@@ -40,7 +40,27 @@
       "Bash(npx wrangler secret:*)",
       "Bash(curl:*)",
       "Bash(magick:*)",
-      "Bash(npx @capacitor/assets:*)"
+      "Bash(npx @capacitor/assets:*)",
+      "Bash(gh:*)",
+      "Bash(winget install:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" auth status)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" auth login --web --git-protocol https)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" repo delete guepardlover77/distribution_calendriers_pompiers --yes)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" auth refresh -h github.com -s delete_repo)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" repo create distribution_calendriers_pompiers --public --description \"Application de distribution de calendriers pour les pompiers\" --source \"C:\\\\Users\\\\admin3\\\\Documents\\\\Maison\\\\Informatique\\\\pycharm\\\\distribution_calendriers_pompiers\" --push)",
+      "Bash(git remote:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" secret list --repo guepardlover77/distribution_calendriers_pompiers)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" secret set VITE_NOCODB_BASE_URL --body \"https://nocodb-proxy.cam137.workers.dev\" --repo guepardlover77/distribution_calendriers_pompiers)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" secret set VITE_NOCODB_API_TOKEN --body \"46HVd2uSBaB28-_vzSEaMvVVTM-Q15TpmES3vSv9\" --repo guepardlover77/distribution_calendriers_pompiers)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" run list --repo guepardlover77/distribution_calendriers_pompiers --limit 5)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" workflow run \"Build APK & Release\" --repo guepardlover77/distribution_calendriers_pompiers --ref main)",
+      "Bash(keytool:*)",
+      "Bash(where java:*)",
+      "Bash(\"C:\\\\Program Files\\\\Common Files\\\\Oracle\\\\Java\\\\javapath\\\\keytool.exe\" -genkey -v -keystore calendriers-pompiers.keystore -alias calendriers-pompiers -keyalg RSA -keysize 2048 -validity 10000)",
+      "Bash(\"/c/Program Files/Common Files/Oracle/Java/javapath/keytool.exe\" -genkey -v -keystore calendriers-pompiers.keystore -alias calendriers-pompiers -keyalg RSA -keysize 2048 -validity 10000)",
+      "Bash(cmd.exe /c \"keytool -genkey -v -keystore calendriers-pompiers.keystore -alias calendriers-pompiers -keyalg RSA -keysize 2048 -validity 10000\")",
+      "Bash(cat:*)",
+      "WebFetch(domain:api-adresse.data.gouv.fr)"
     ]
   },
   "outputStyle": "default"

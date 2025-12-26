@@ -14,61 +14,6 @@ const DemoOverlay: React.FC = () => {
     history.push('/login')
   }, [logout, history])
 
-  // Intercepter tous les clics en mode demo
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    // Permettre le clic sur le bouton "Quitter"
-    const target = e.target as HTMLElement
-    if (target.closest('.demo-exit-btn') || target.closest('.demo-banner')) {
-      return
-    }
-
-    // Permettre la navigation (tabs, liens, etc.)
-    const isNavigationElement =
-      target.closest('ion-tab-button') ||
-      target.closest('ion-back-button') ||
-      target.closest('[routerLink]') ||
-      target.closest('a[href]')
-
-    if (isNavigationElement) {
-      return
-    }
-
-    // Permettre les interactions avec la carte (zoom, pan)
-    const isMapInteraction = target.closest('.leaflet-container')
-    if (isMapInteraction) {
-      // Bloquer seulement les popups et marqueurs
-      const isMarkerOrPopup =
-        target.closest('.leaflet-marker-icon') ||
-        target.closest('.leaflet-popup') ||
-        target.closest('.custom-marker')
-
-      if (!isMarkerOrPopup) {
-        return
-      }
-    }
-
-    // Bloquer tous les autres clics sur les elements interactifs
-    const isInteractiveElement =
-      target.closest('ion-button') ||
-      target.closest('ion-fab-button') ||
-      target.closest('ion-input') ||
-      target.closest('ion-select') ||
-      target.closest('ion-toggle') ||
-      target.closest('ion-checkbox') ||
-      target.closest('ion-radio') ||
-      target.closest('ion-segment-button') ||
-      target.closest('ion-chip') ||
-      target.closest('button') ||
-      target.closest('input') ||
-      target.closest('select') ||
-      target.closest('textarea')
-
-    if (isInteractiveElement) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-  }, [])
-
   if (!isDemoMode) {
     return null
   }
@@ -97,7 +42,7 @@ const DemoOverlay: React.FC = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <IonIcon icon={eyeOutline} style={{ fontSize: '18px' }} />
-          <span>Mode demonstration - Navigation uniquement</span>
+          <span>Mode demo</span>
         </div>
         <button
           className="demo-exit-btn"
@@ -121,38 +66,10 @@ const DemoOverlay: React.FC = () => {
         </button>
       </div>
 
-      {/* Overlay transparent pour intercepter les clics */}
-      <div
-        onClick={handleOverlayClick}
-        onMouseDown={handleOverlayClick}
-        style={{
-          position: 'fixed',
-          top: '40px', // Sous le bandeau
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 9998,
-          pointerEvents: 'auto',
-          background: 'transparent'
-        }}
-      />
-
       {/* Style pour decaler le contenu sous le bandeau */}
       <style>{`
-        ion-app {
-          margin-top: 40px !important;
-        }
-        ion-header {
-          margin-top: 0 !important;
-        }
-        /* Desactiver visuellement les elements interactifs */
-        .demo-mode ion-button:not(.demo-exit-btn),
-        .demo-mode ion-fab-button,
-        .demo-mode ion-input,
-        .demo-mode ion-select,
-        .demo-mode ion-toggle,
-        .demo-mode ion-checkbox {
-          opacity: 0.7;
+        .demo-mode {
+          padding-top: 40px !important;
         }
       `}</style>
     </>

@@ -11,6 +11,7 @@ import {
 import { IonReactRouter } from '@ionic/react-router'
 import { mapOutline, listOutline, statsChartOutline, settingsOutline } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/authStore'
+import DemoOverlay from '@/components/DemoOverlay'
 
 // Pages
 import Login from '@/pages/Login'
@@ -119,6 +120,7 @@ const AppRouter: React.FC = () => {
 
   return (
     <IonReactRouter>
+      <DemoOverlay />
       <IonRouterOutlet>
         <Route exact path="/login">
           {isLoggedIn ? <Redirect to="/tabs/map" /> : <Login />}

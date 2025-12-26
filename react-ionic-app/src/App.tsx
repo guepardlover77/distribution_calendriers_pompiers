@@ -3,7 +3,6 @@ import { IonApp } from '@ionic/react'
 import AppRouter from './router/AppRouter'
 import { useAuthStore } from './stores/authStore'
 import { useGeolocationPermission } from './hooks/useGeolocationPermission'
-import DemoOverlay from './components/DemoOverlay'
 
 const App: React.FC = () => {
   const initialize = useAuthStore(state => state.initialize)
@@ -17,7 +16,6 @@ const App: React.FC = () => {
 
   return (
     <IonApp className={isDemoMode ? 'demo-mode' : ''}>
-      <DemoOverlay />
       <AppRouter />
     </IonApp>
   )
