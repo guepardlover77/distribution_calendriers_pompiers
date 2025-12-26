@@ -109,6 +109,15 @@ const MainTabs: React.FC = () => {
   )
 }
 
+// Determine base path for routing (for GitHub Pages deployment)
+const getBasename = () => {
+  // In production, check if we're in /app/ subfolder
+  if (import.meta.env.PROD && window.location.pathname.startsWith('/app')) {
+    return '/app'
+  }
+  return ''
+}
+
 // App Router
 const AppRouter: React.FC = () => {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn())
@@ -119,7 +128,7 @@ const AppRouter: React.FC = () => {
   }
 
   return (
-    <IonReactRouter>
+    <IonReactRouter basename={getBasename()}>
       <DemoOverlay />
       <IonRouterOutlet>
         <Route exact path="/login">
