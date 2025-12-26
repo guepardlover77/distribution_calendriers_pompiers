@@ -10,9 +10,7 @@ import {
 } from '@ionic/react'
 import { IonReactRouter } from '@ionic/react-router'
 import { mapOutline, listOutline, statsChartOutline, settingsOutline } from 'ionicons/icons'
-import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '@/stores/authStore'
-import DemoOverlay from '@/components/DemoOverlay'
 
 // Pages
 import Login from '@/pages/Login'
@@ -110,19 +108,6 @@ const MainTabs: React.FC = () => {
   )
 }
 
-// Determine base path for routing (for GitHub Pages deployment only)
-const getBasename = () => {
-  // Never use basename on native platforms (Android/iOS)
-  if (Capacitor.isNativePlatform()) {
-    return ''
-  }
-  // In production web, check if we're in /app/ subfolder
-  if (import.meta.env.PROD && window.location.pathname.startsWith('/app')) {
-    return '/app'
-  }
-  return ''
-}
-
 // App Router
 const AppRouter: React.FC = () => {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn())
@@ -133,8 +118,7 @@ const AppRouter: React.FC = () => {
   }
 
   return (
-    <IonReactRouter basename={getBasename()}>
-      <DemoOverlay />
+    <IonReactRouter>
       <IonRouterOutlet>
         <Route exact path="/login">
           {isLoggedIn ? <Redirect to="/tabs/map" /> : <Login />}

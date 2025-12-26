@@ -1,7 +1,5 @@
 import { create } from 'zustand'
 import { apiService } from '@/services/api'
-import { useAuthStore } from './authStore'
-import { DEMO_ZONES } from '@/data/demoData'
 
 export interface Zone {
   Id?: string
@@ -34,14 +32,6 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   error: null,
 
   fetchZones: async () => {
-    const authStore = useAuthStore.getState()
-
-    // En mode demo, charger les donnees fictives
-    if (authStore.isDemoMode) {
-      set({ zones: DEMO_ZONES, loading: false, error: null })
-      return
-    }
-
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -57,13 +47,6 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   },
 
   createZone: async (data: Partial<Zone>) => {
-    const authStore = useAuthStore.getState()
-
-    // Bloquer en mode demo
-    if (authStore.isDemoMode) {
-      throw new Error('Action non disponible en mode demonstration')
-    }
-
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -97,13 +80,6 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   },
 
   updateZone: async (id: string, data: Partial<Zone>) => {
-    const authStore = useAuthStore.getState()
-
-    // Bloquer en mode demo
-    if (authStore.isDemoMode) {
-      throw new Error('Action non disponible en mode demonstration')
-    }
-
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -133,13 +109,6 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   },
 
   deleteZone: async (id: string) => {
-    const authStore = useAuthStore.getState()
-
-    // Bloquer en mode demo
-    if (authStore.isDemoMode) {
-      throw new Error('Action non disponible en mode demonstration')
-    }
-
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {

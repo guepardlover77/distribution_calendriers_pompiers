@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { apiService } from '@/services/api'
 import { storageService, Distribution } from '@/services/storage'
 import { useAuthStore } from './authStore'
-import { DEMO_DISTRIBUTIONS } from '@/data/demoData'
 
 interface Filters {
   status: string
@@ -152,14 +151,6 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   fetchAll: async () => {
-    const authStore = useAuthStore.getState()
-
-    // En mode demo, charger les donnees fictives
-    if (authStore.isDemoMode) {
-      set({ items: DEMO_DISTRIBUTIONS, loading: false })
-      return
-    }
-
     set({ loading: true })
     try {
       const rawData = await apiService.getDistributions<Record<string, unknown>>()
@@ -197,11 +188,6 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   create: async (distribution) => {
     const authStore = useAuthStore.getState()
 
-    // Bloquer en mode demo
-    if (authStore.isDemoMode) {
-      throw new Error('Action non disponible en mode demonstration')
-    }
-
     const newDist: Distribution = {
       id: Date.now().toString(),
       address: distribution.address || '',
@@ -237,13 +223,6 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   update: async (id, updates) => {
-    const authStore = useAuthStore.getState()
-
-    // Bloquer en mode demo
-    if (authStore.isDemoMode) {
-      throw new Error('Action non disponible en mode demonstration')
-    }
-
     set(state => ({
       items: state.items.map(d =>
         d.id === id
@@ -271,13 +250,6 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   remove: async (id) => {
-    const authStore = useAuthStore.getState()
-
-    // Bloquer en mode demo
-    if (authStore.isDemoMode) {
-      throw new Error('Action non disponible en mode demonstration')
-    }
-
     set(state => ({
       items: state.items.filter(d => d.id !== id)
     }))

@@ -6,7 +6,6 @@ import { useGeolocationPermission } from './hooks/useGeolocationPermission'
 
 const App: React.FC = () => {
   const initialize = useAuthStore(state => state.initialize)
-  const isDemoMode = useAuthStore(state => state.isDemoMode)
   // Demander la permission de géolocalisation dès le démarrage de l'app
   useGeolocationPermission()
 
@@ -15,7 +14,7 @@ const App: React.FC = () => {
   }, [initialize])
 
   return (
-    <IonApp className={isDemoMode ? 'demo-mode' : ''}>
+    <IonApp>
       <AppRouter />
     </IonApp>
   )

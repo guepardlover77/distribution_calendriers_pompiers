@@ -21,7 +21,6 @@ import {
 } from '@ionic/react'
 import { addOutline, locateOutline, logOutOutline, brushOutline, layersOutline, checkmarkCircle, syncOutline } from 'ionicons/icons'
 import { Geolocation } from '@capacitor/geolocation'
-import { Capacitor } from '@capacitor/core'
 import L from 'leaflet'
 import 'leaflet-draw'
 import { useAuthStore } from '@/stores/authStore'
@@ -32,87 +31,6 @@ import DistributionModal from '@/components/DistributionModal'
 
 // Import leaflet-draw CSS
 import 'leaflet-draw/dist/leaflet.draw.css'
-
-// Helper functions for geolocation (with web fallback)
-const isNativePlatform = Capacitor.isNativePlatform()
-
-const getGeolocationPermission = async (): Promise<boolean> => {
-  if (isNativePlatform) {
-    const permission = await Geolocation.checkPermissions()
-    if (permission.location === 'granted') return true
-    const request = await Geolocation.requestPermissions()
-    return request.location === 'granted'
-  } else {
-    // Web: use navigator.permissions if available
-    if ('permissions' in navigator) {
-      try {
-        const result = await navigator.permissions.query({ name: 'geolocation' })
-        return result.state === 'granted' || result.state === 'prompt'
-      } catch {
-        return true // Assume we can try
-      }
-    }
-    return true
-  }
-}
-
-const getCurrentPosition = async (): Promise<GeolocationPosition> => {
-  if (isNativePlatform) {
-    const position = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 10000
-    })
-    return position as unknown as GeolocationPosition
-  } else {
-    // Web: use native browser API
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation not supported'))
-        return
-      }
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      })
-    })
-  }
-}
-
-const watchPosition = (callback: (pos: GeolocationPosition) => void): number | string => {
-  if (isNativePlatform) {
-    let watchId: string | undefined
-    Geolocation.watchPosition(
-      { enableHighAccuracy: true },
-      (pos, err) => {
-        if (pos && !err) {
-          callback(pos as unknown as GeolocationPosition)
-        }
-      }
-    ).then(id => { watchId = id })
-    return watchId || ''
-  } else {
-    // Web: use native browser API
-    if (!navigator.geolocation) return -1
-    return navigator.geolocation.watchPosition(
-      callback,
-      () => {},
-      { enableHighAccuracy: true }
-    )
-  }
-}
-
-const clearWatch = (watchId: number | string) => {
-  if (isNativePlatform) {
-    if (typeof watchId === 'string' && watchId) {
-      Geolocation.clearWatch({ id: watchId })
-    }
-  } else {
-    if (typeof watchId === 'number' && watchId !== -1) {
-      navigator.geolocation.clearWatch(watchId)
-    }
-  }
-}
 
 // Map theme configuration
 interface MapTheme {
@@ -185,7 +103,6 @@ const Map: React.FC = () => {
   const currentUser = useAuthStore(state => state.currentUser)
   const fetchAll = useDistributionsStore(state => state.fetchAll)
   const filteredItems = useDistributionsStore(state => state.filteredItems)
-  const removeDistribution = useDistributionsStore(state => state.remove)
 
   // Zones store
   const { zones, fetchZones, createZone, deleteZone } = useZonesStore()
@@ -198,7 +115,7 @@ const Map: React.FC = () => {
   const tileLayerRef = useRef<L.TileLayer | null>(null)
   const gpsMarkerRef = useRef<L.CircleMarker | null>(null)
   const gpsAccuracyCircleRef = useRef<L.Circle | null>(null)
-  const gpsWatchIdRef = useRef<string | number | null>(null)
+  const gpsWatchIdRef = useRef<string | null>(null)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [drawMode, setDrawMode] = useState(false)
@@ -215,16 +132,21 @@ const Map: React.FC = () => {
   // Demander la permission de geolocalisation
   const requestLocationPermission = async () => {
     try {
-      const granted = await getGeolocationPermission()
-      console.log('[Map] Permission granted:', granted)
+      const permission = await Geolocation.checkPermissions()
+      console.log('[Map] Current permission status:', permission.location)
 
-      if (granted) {
-        presentToast({
-          message: 'Permission de localisation accordee',
-          duration: 2000,
-          color: 'success',
-          position: 'top'
-        })
+      if (permission.location !== 'granted') {
+        const request = await Geolocation.requestPermissions()
+        console.log('[Map] Permission request result:', request.location)
+
+        if (request.location === 'granted') {
+          presentToast({
+            message: 'Permission de localisation accordee',
+            duration: 2000,
+            color: 'success',
+            position: 'top'
+          })
+        }
       }
     } catch (error) {
       console.error('[Map] Error requesting location permission:', error)
@@ -337,10 +259,7 @@ const Map: React.FC = () => {
           <span style="color: ${color}">&bull; ${getStatusLabel(dist.status)}</span>
           ${dist.amount > 0 ? `<br><strong>Montant:</strong> ${dist.amount.toFixed(2)} EUR` : ''}
           ${dist.payment_method && dist.payment_method !== 'non_specifie' ? `<br><strong>Paiement:</strong> ${dist.payment_method}` : ''}
-          <div style="display: flex; gap: 8px; margin-top: 8px;">
-            <button class="distribution-edit-btn" data-distribution-id="${dist.id}" style="flex: 1; padding: 6px 12px; background: var(--ion-color-primary, #3b82f6); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Modifier</button>
-            <button class="distribution-delete-btn" data-distribution-id="${dist.id}" style="flex: 1; padding: 6px 12px; background: var(--ion-color-danger, #ef4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Supprimer</button>
-          </div>
+          <br><button class="distribution-edit-btn" data-distribution-id="${dist.id}" style="margin-top: 8px; padding: 6px 12px; background: var(--ion-color-primary, #3b82f6); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">Modifier</button>
         </div>
       `)
 
@@ -474,40 +393,6 @@ const Map: React.FC = () => {
             }
           })
         }
-
-        // Handler pour suppression de distribution
-        const distDeleteBtn = container.querySelector('.distribution-delete-btn')
-        if (distDeleteBtn) {
-          distDeleteBtn.addEventListener('click', async (evt) => {
-            const distributionId = (evt.target as HTMLElement).getAttribute('data-distribution-id')
-            if (distributionId) {
-              const items = filteredItems()
-              const distribution = items.find(d => d.id === distributionId)
-              if (distribution) {
-                if (confirm(`Supprimer la distribution a l'adresse "${distribution.address}" ?`)) {
-                  try {
-                    await removeDistribution(distributionId)
-                    presentToast({
-                      message: 'Distribution supprimee',
-                      duration: 2000,
-                      color: 'success',
-                      position: 'top'
-                    })
-                    mapRef.current?.closePopup()
-                    updateMarkers()
-                  } catch {
-                    presentToast({
-                      message: 'Erreur lors de la suppression',
-                      duration: 2000,
-                      color: 'danger',
-                      position: 'top'
-                    })
-                  }
-                }
-              }
-            }
-          })
-        }
       })
 
       // Initial updates
@@ -540,27 +425,37 @@ const Map: React.FC = () => {
       if (mapRef.current) {
         try {
           // Verifier/demander la permission
-          const granted = await getGeolocationPermission()
-          if (!granted) {
-            console.log('[Map] Geolocation permission not granted')
-            return
+          const permission = await Geolocation.checkPermissions()
+          if (permission.location !== 'granted') {
+            const request = await Geolocation.requestPermissions()
+            if (request.location !== 'granted') {
+              return
+            }
           }
 
           // Obtenir la position initiale
-          const position = await getCurrentPosition()
+          const position = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 10000
+          })
 
           const { latitude, longitude, accuracy } = position.coords
           mapRef.current?.setView([latitude, longitude], 15)
-          updateGpsMarker(latitude, longitude, accuracy || 0)
+          updateGpsMarker(latitude, longitude, accuracy)
 
           // Demarrer le suivi continu de la position
-          const watchId = watchPosition((pos) => {
-            updateGpsMarker(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy || 0)
-          })
+          const watchId = await Geolocation.watchPosition(
+            { enableHighAccuracy: true },
+            (pos, err) => {
+              if (pos && !err) {
+                updateGpsMarker(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy)
+              }
+            }
+          )
           gpsWatchIdRef.current = watchId
         } catch (error) {
           // En cas d'erreur, garder la vue par defaut
-          console.log('[Map] Geolocalisation non disponible:', error)
+          console.log('Geolocalisation non disponible:', error)
         }
       }
     }
@@ -573,8 +468,8 @@ const Map: React.FC = () => {
     return () => {
       clearTimeout(timer)
       // Arreter le suivi GPS au demontage
-      if (gpsWatchIdRef.current !== null) {
-        clearWatch(gpsWatchIdRef.current)
+      if (gpsWatchIdRef.current) {
+        Geolocation.clearWatch({ id: gpsWatchIdRef.current })
       }
     }
   }, [updateGpsMarker])
@@ -724,23 +619,29 @@ const Map: React.FC = () => {
   const centerOnLocation = async () => {
     try {
       // Verifier/demander la permission d'abord
-      const granted = await getGeolocationPermission()
-      if (!granted) {
-        presentToast({
-          message: 'Permission de localisation refusee',
-          duration: 2000,
-          color: 'warning',
-          position: 'top'
-        })
-        return
+      const permission = await Geolocation.checkPermissions()
+      if (permission.location !== 'granted') {
+        const request = await Geolocation.requestPermissions()
+        if (request.location !== 'granted') {
+          presentToast({
+            message: 'Permission de localisation refusee',
+            duration: 2000,
+            color: 'warning',
+            position: 'top'
+          })
+          return
+        }
       }
 
       // Obtenir la position
-      const position = await getCurrentPosition()
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      })
 
       const { latitude, longitude, accuracy } = position.coords
       mapRef.current?.setView([latitude, longitude], 15)
-      updateGpsMarker(latitude, longitude, accuracy || 0)
+      updateGpsMarker(latitude, longitude, accuracy)
 
       presentToast({
         message: 'Position obtenue',

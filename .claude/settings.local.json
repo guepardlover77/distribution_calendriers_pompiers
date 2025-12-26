@@ -60,7 +60,8 @@
       "Bash(\"/c/Program Files/Common Files/Oracle/Java/javapath/keytool.exe\" -genkey -v -keystore calendriers-pompiers.keystore -alias calendriers-pompiers -keyalg RSA -keysize 2048 -validity 10000)",
       "Bash(cmd.exe /c \"keytool -genkey -v -keystore calendriers-pompiers.keystore -alias calendriers-pompiers -keyalg RSA -keysize 2048 -validity 10000\")",
       "Bash(cat:*)",
-      "WebFetch(domain:api-adresse.data.gouv.fr)"
+      "WebFetch(domain:api-adresse.data.gouv.fr)",
+      "Bash(git checkout:*)"
     ]
   },
   "outputStyle": "default"
