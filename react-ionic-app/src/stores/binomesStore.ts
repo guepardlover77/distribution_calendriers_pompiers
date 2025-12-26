@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { apiService } from '@/services/api'
+import { useDemoStore, isDemoMode } from './demoStore'
 
 export interface Binome {
   Id?: string
@@ -32,6 +33,13 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
   error: null,
 
   fetchBinomes: async () => {
+    // Mode démo : utiliser les données du demoStore
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      set({ binomes: demoStore.binomes as Binome[], loading: false, error: null })
+      return
+    }
+
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -47,6 +55,17 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
   },
 
   createBinome: async (data: Partial<Binome>) => {
+    // Mode démo : créer localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      const newBinome = demoStore.addBinome(data) as Binome
+      set(state => ({
+        binomes: [...state.binomes, newBinome],
+        loading: false
+      }))
+      return newBinome
+    }
+
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -76,6 +95,19 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
   },
 
   updateBinome: async (id: string, data: Partial<Binome>) => {
+    // Mode démo : modifier localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      demoStore.updateBinome(id, data)
+      set(state => ({
+        binomes: state.binomes.map(b =>
+          (b.Id === id || b.id === id) ? { ...b, ...data } : b
+        ),
+        loading: false
+      }))
+      return { ...data, id } as Binome
+    }
+
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -110,6 +142,17 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
   },
 
   deleteBinome: async (id: string) => {
+    // Mode démo : supprimer localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      demoStore.deleteBinome(id)
+      set(state => ({
+        binomes: state.binomes.filter(b => b.Id !== id && b.id !== id),
+        loading: false
+      }))
+      return
+    }
+
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {

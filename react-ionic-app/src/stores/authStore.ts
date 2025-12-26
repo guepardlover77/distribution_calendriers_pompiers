@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { apiService } from '@/services/api'
 import { storageService, SessionData } from '@/services/storage'
+import { useDemoStore } from './demoStore'
+import { DEMO_USER } from '@/data/demoData'
 
 const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
 
@@ -18,6 +20,7 @@ interface AuthState {
   // Actions
   initialize: () => Promise<void>
   login: (username: string, password: string) => Promise<SessionData>
+  loginDemo: () => Promise<void>
   logout: () => Promise<void>
   canAccessDistribution: (distribution: { binome_id?: string }) => boolean
   canAccessZone: (zone: { id?: string; name?: string; binome_id?: string }) => boolean
@@ -112,11 +115,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return sessionUser
   },
 
+  loginDemo: async () => {
+    // Activer le mode démo
+    const demoStore = useDemoStore.getState()
+    demoStore.enterDemoMode()
+
+    // Créer une session utilisateur démo
+    const sessionUser: SessionData = {
+      ...DEMO_USER,
+      sessionExpiry: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
+    }
+
+    // Sauvegarder la session
+    await storageService.saveSession(sessionUser)
+    set({ currentUser: sessionUser })
+
+    // Setup timeouts
+    setupSessionTimeout(set, get)
+    setupActivityListeners(set, get)
+  },
+
   logout: async () => {
     const state = get()
     if (state.sessionTimeoutId) {
       clearTimeout(state.sessionTimeoutId)
     }
+
+    // Quitter le mode démo si actif
+    const demoStore = useDemoStore.getState()
+    if (demoStore.isDemoMode) {
+      demoStore.exitDemoMode()
+    }
+
     set({ currentUser: null, sessionTimeoutId: null })
     await storageService.clearUserSession()
   },

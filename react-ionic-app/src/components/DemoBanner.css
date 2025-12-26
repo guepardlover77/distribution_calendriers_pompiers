@@ -1,0 +1,71 @@
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-height: 40px;
+}
+
+.demo-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-banner-icon {
+  font-size: 18px;
+}
+
+.demo-banner-text {
+  font-weight: 600;
+}
+
+.demo-banner-button {
+  --color: white;
+  --background: rgba(255, 255, 255, 0.2);
+  --background-hover: rgba(255, 255, 255, 0.3);
+  --border-radius: 4px;
+  font-size: 12px;
+  height: 28px;
+}
+
+/* Ajuster le contenu des pages quand le bandeau est affiché */
+.demo-mode-active ion-header {
+  margin-top: 40px;
+}
+
+.demo-mode-active ion-content {
+  --padding-top: 40px;
+}
+
+/* Pour les pages sans header */
+.demo-mode-active .ion-page > ion-content:first-child {
+  --padding-top: 56px;
+}
+
+/* Responsive pour petits écrans */
+@media (max-width: 480px) {
+  .demo-banner {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .demo-banner-text {
+    display: none;
+  }
+
+  .demo-banner-content::after {
+    content: 'DEMO';
+    font-weight: 600;
+  }
+}

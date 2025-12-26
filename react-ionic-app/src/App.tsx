@@ -3,9 +3,12 @@ import { IonApp } from '@ionic/react'
 import AppRouter from './router/AppRouter'
 import { useAuthStore } from './stores/authStore'
 import { useGeolocationPermission } from './hooks/useGeolocationPermission'
+import { useDemoStore } from './stores/demoStore'
+import DemoBanner from './components/DemoBanner'
 
 const App: React.FC = () => {
   const initialize = useAuthStore(state => state.initialize)
+  const isDemoMode = useDemoStore(state => state.isDemoMode)
   // Demander la permission de géolocalisation dès le démarrage de l'app
   useGeolocationPermission()
 
@@ -14,7 +17,8 @@ const App: React.FC = () => {
   }, [initialize])
 
   return (
-    <IonApp>
+    <IonApp className={isDemoMode ? 'demo-mode-active' : ''}>
+      <DemoBanner />
       <AppRouter />
     </IonApp>
   )

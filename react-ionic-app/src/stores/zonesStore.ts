@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { apiService } from '@/services/api'
+import { useDemoStore, isDemoMode } from './demoStore'
 
 export interface Zone {
   Id?: string
@@ -32,6 +33,13 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   error: null,
 
   fetchZones: async () => {
+    // Mode démo : utiliser les données du demoStore
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      set({ zones: demoStore.zones as Zone[], loading: false, error: null })
+      return
+    }
+
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -47,6 +55,17 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   },
 
   createZone: async (data: Partial<Zone>) => {
+    // Mode démo : créer localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      const newZone = demoStore.addZone(data) as Zone
+      set(state => ({
+        zones: [...state.zones, newZone],
+        loading: false
+      }))
+      return newZone
+    }
+
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -80,6 +99,19 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   },
 
   updateZone: async (id: string, data: Partial<Zone>) => {
+    // Mode démo : modifier localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      demoStore.updateZone(id, data)
+      set(state => ({
+        zones: state.zones.map(z =>
+          (z.Id === id || z.id === id) ? { ...z, ...data } : z
+        ),
+        loading: false
+      }))
+      return { ...data, id } as Zone
+    }
+
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {
@@ -109,6 +141,17 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   },
 
   deleteZone: async (id: string) => {
+    // Mode démo : supprimer localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      demoStore.deleteZone(id)
+      set(state => ({
+        zones: state.zones.filter(z => z.Id !== id && z.id !== id),
+        loading: false
+      }))
+      return
+    }
+
     set({ loading: true, error: null })
     try {
       if (!apiService.isReady) {

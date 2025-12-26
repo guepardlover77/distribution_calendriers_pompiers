@@ -12,13 +12,14 @@ import {
   IonSpinner,
   useIonToast
 } from '@ionic/react'
-import { flameOutline } from 'ionicons/icons'
+import { flameOutline, eyeOutline } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/authStore'
 
 const Login: React.FC = () => {
   const history = useHistory()
   const [present] = useIonToast()
   const login = useAuthStore(state => state.login)
+  const loginDemo = useAuthStore(state => state.loginDemo)
   const userDisplayName = useAuthStore(state => state.userDisplayName)
 
   const [username, setUsername] = useState('')
@@ -45,6 +46,38 @@ const Login: React.FC = () => {
 
     } catch (err) {
       const message = (err as Error).message || 'Erreur de connexion'
+      setError(message)
+
+      present({
+        message,
+        duration: 3000,
+        color: 'danger',
+        position: 'top'
+      })
+
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDemoMode = async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      await loginDemo()
+
+      present({
+        message: 'Mode demo active',
+        duration: 2000,
+        color: 'warning',
+        position: 'top'
+      })
+
+      history.push('/tabs/map')
+
+    } catch (err) {
+      const message = (err as Error).message || 'Erreur lors de l\'activation du mode demo'
       setError(message)
 
       present({
@@ -121,10 +154,22 @@ const Login: React.FC = () => {
               {loading ? <IonSpinner name="crescent" /> : 'Se connecter'}
             </IonButton>
 
-            <div className="demo-credentials">
+            <div className="demo-section" style={{ marginTop: '24px', textAlign: 'center' }}>
               <IonText color="medium">
-                <p><small>Identifiants demo: admin / admin123</small></p>
+                <p style={{ marginBottom: '12px' }}>
+                  <small>Decouvrez l'application sans compte</small>
+                </p>
               </IonText>
+              <IonButton
+                expand="block"
+                fill="outline"
+                color="warning"
+                onClick={handleDemoMode}
+                disabled={loading}
+              >
+                <IonIcon slot="start" icon={eyeOutline} />
+                Mode Demo
+              </IonButton>
             </div>
           </form>
         </div>

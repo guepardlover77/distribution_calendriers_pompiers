@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { apiService } from '@/services/api'
 import { storageService, Distribution } from '@/services/storage'
 import { useAuthStore } from './authStore'
+import { useDemoStore, isDemoMode } from './demoStore'
 
 interface Filters {
   status: string
@@ -151,6 +152,13 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   fetchAll: async () => {
+    // Mode démo : utiliser les données du demoStore
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      set({ items: demoStore.distributions, loading: false })
+      return
+    }
+
     set({ loading: true })
     try {
       const rawData = await apiService.getDistributions<Record<string, unknown>>()
@@ -186,6 +194,14 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   create: async (distribution) => {
+    // Mode démo : créer localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      const newDist = demoStore.addDistribution(distribution)
+      set(state => ({ items: [...state.items, newDist] }))
+      return newDist
+    }
+
     const authStore = useAuthStore.getState()
 
     const newDist: Distribution = {
@@ -223,6 +239,20 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   update: async (id, updates) => {
+    // Mode démo : modifier localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      demoStore.updateDistribution(id, updates)
+      set(state => ({
+        items: state.items.map(d =>
+          d.id === id
+            ? { ...d, ...updates, updatedAt: new Date().toISOString() }
+            : d
+        )
+      }))
+      return
+    }
+
     set(state => ({
       items: state.items.map(d =>
         d.id === id
@@ -250,6 +280,16 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   remove: async (id) => {
+    // Mode démo : supprimer localement uniquement
+    if (isDemoMode()) {
+      const demoStore = useDemoStore.getState()
+      demoStore.deleteDistribution(id)
+      set(state => ({
+        items: state.items.filter(d => d.id !== id)
+      }))
+      return
+    }
+
     set(state => ({
       items: state.items.filter(d => d.id !== id)
     }))
