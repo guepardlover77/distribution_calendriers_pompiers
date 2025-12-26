@@ -9,6 +9,7 @@ interface AuthState {
   initialized: boolean
   lastActivity: number
   sessionTimeoutId: ReturnType<typeof setTimeout> | null
+  isDemoMode: boolean
 
   // Getters
   isLoggedIn: () => boolean
@@ -18,6 +19,7 @@ interface AuthState {
   // Actions
   initialize: () => Promise<void>
   login: (username: string, password: string) => Promise<SessionData>
+  loginAsDemo: () => void
   logout: () => Promise<void>
   canAccessDistribution: (distribution: { binome_id?: string }) => boolean
   canAccessZone: (zone: { id?: string; name?: string; binome_id?: string }) => boolean
@@ -28,9 +30,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialized: false,
   lastActivity: Date.now(),
   sessionTimeoutId: null,
+  isDemoMode: false,
 
   isLoggedIn: () => {
     const state = get()
+    // Demo mode is always logged in
+    if (state.isDemoMode && state.currentUser) return true
     if (!state.currentUser?.sessionExpiry) return false
     return new Date(state.currentUser.sessionExpiry) > new Date()
   },
@@ -112,12 +117,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return sessionUser
   },
 
+  loginAsDemo: () => {
+    // Create a demo session (admin view to see everything)
+    const sessionExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours for demo
+
+    const demoUser: SessionData = {
+      id: 'demo',
+      username: 'demo',
+      binome_name: 'Visiteur Demo',
+      assigned_zone: '',
+      is_admin: true, // Admin to see all features
+      sessionExpiry: sessionExpiry.toISOString()
+    }
+
+    set({ currentUser: demoUser, isDemoMode: true, initialized: true })
+  },
+
   logout: async () => {
     const state = get()
     if (state.sessionTimeoutId) {
       clearTimeout(state.sessionTimeoutId)
     }
-    set({ currentUser: null, sessionTimeoutId: null })
+    set({ currentUser: null, sessionTimeoutId: null, isDemoMode: false })
     await storageService.clearUserSession()
   },
 

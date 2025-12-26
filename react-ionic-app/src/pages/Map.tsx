@@ -103,6 +103,7 @@ const Map: React.FC = () => {
   const currentUser = useAuthStore(state => state.currentUser)
   const fetchAll = useDistributionsStore(state => state.fetchAll)
   const filteredItems = useDistributionsStore(state => state.filteredItems)
+  const removeDistribution = useDistributionsStore(state => state.remove)
 
   // Zones store
   const { zones, fetchZones, createZone, deleteZone } = useZonesStore()
@@ -259,7 +260,10 @@ const Map: React.FC = () => {
           <span style="color: ${color}">&bull; ${getStatusLabel(dist.status)}</span>
           ${dist.amount > 0 ? `<br><strong>Montant:</strong> ${dist.amount.toFixed(2)} EUR` : ''}
           ${dist.payment_method && dist.payment_method !== 'non_specifie' ? `<br><strong>Paiement:</strong> ${dist.payment_method}` : ''}
-          <br><button class="distribution-edit-btn" data-distribution-id="${dist.id}" style="margin-top: 8px; padding: 6px 12px; background: var(--ion-color-primary, #3b82f6); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">Modifier</button>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <button class="distribution-edit-btn" data-distribution-id="${dist.id}" style="flex: 1; padding: 6px 12px; background: var(--ion-color-primary, #3b82f6); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Modifier</button>
+            <button class="distribution-delete-btn" data-distribution-id="${dist.id}" style="flex: 1; padding: 6px 12px; background: var(--ion-color-danger, #ef4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Supprimer</button>
+          </div>
         </div>
       `)
 
@@ -389,6 +393,40 @@ const Map: React.FC = () => {
                 setEditingDistribution(distribution)
                 setIsModalOpen(true)
                 mapRef.current?.closePopup()
+              }
+            }
+          })
+        }
+
+        // Handler pour suppression de distribution
+        const distDeleteBtn = container.querySelector('.distribution-delete-btn')
+        if (distDeleteBtn) {
+          distDeleteBtn.addEventListener('click', async (evt) => {
+            const distributionId = (evt.target as HTMLElement).getAttribute('data-distribution-id')
+            if (distributionId) {
+              const items = filteredItems()
+              const distribution = items.find(d => d.id === distributionId)
+              if (distribution) {
+                if (confirm(`Supprimer la distribution a l'adresse "${distribution.address}" ?`)) {
+                  try {
+                    await removeDistribution(distributionId)
+                    presentToast({
+                      message: 'Distribution supprimee',
+                      duration: 2000,
+                      color: 'success',
+                      position: 'top'
+                    })
+                    mapRef.current?.closePopup()
+                    updateMarkers()
+                  } catch {
+                    presentToast({
+                      message: 'Erreur lors de la suppression',
+                      duration: 2000,
+                      color: 'danger',
+                      position: 'top'
+                    })
+                  }
+                }
               }
             }
           })

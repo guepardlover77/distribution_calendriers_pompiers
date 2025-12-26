@@ -19,6 +19,7 @@ const Login: React.FC = () => {
   const history = useHistory()
   const [present] = useIonToast()
   const login = useAuthStore(state => state.login)
+  const loginAsDemo = useAuthStore(state => state.loginAsDemo)
   const userDisplayName = useAuthStore(state => state.userDisplayName)
 
   const [username, setUsername] = useState('')
@@ -57,6 +58,17 @@ const Login: React.FC = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDemoLogin = () => {
+    loginAsDemo()
+    present({
+      message: 'Mode demonstration active',
+      duration: 2000,
+      color: 'tertiary',
+      position: 'top'
+    })
+    history.push('/tabs/map')
   }
 
   return (
@@ -121,9 +133,33 @@ const Login: React.FC = () => {
               {loading ? <IonSpinner name="crescent" /> : 'Se connecter'}
             </IonButton>
 
-            <div className="demo-credentials">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              margin: '24px 0 16px',
+              gap: '12px'
+            }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--ion-color-medium)' }} />
+              <IonText color="medium"><small>ou</small></IonText>
+              <div style={{ flex: 1, height: '1px', background: 'var(--ion-color-medium)' }} />
+            </div>
+
+            <IonButton
+              expand="block"
+              fill="outline"
+              color="tertiary"
+              onClick={handleDemoLogin}
+              disabled={loading}
+            >
+              Decouvrir en mode demo
+            </IonButton>
+
+            <div style={{ marginTop: '16px', textAlign: 'center' }}>
               <IonText color="medium">
-                <p><small>Identifiants demo: admin / admin123</small></p>
+                <p style={{ fontSize: '12px', margin: 0 }}>
+                  Explorez l'application avec des donnees fictives,<br/>
+                  sans aucune modification possible.
+                </p>
               </IonText>
             </div>
           </form>
