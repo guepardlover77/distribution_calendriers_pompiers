@@ -10,6 +10,7 @@ import {
 } from '@ionic/react'
 import { IonReactRouter } from '@ionic/react-router'
 import { mapOutline, listOutline, statsChartOutline, settingsOutline } from 'ionicons/icons'
+import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '@/stores/authStore'
 import DemoOverlay from '@/components/DemoOverlay'
 
@@ -109,9 +110,13 @@ const MainTabs: React.FC = () => {
   )
 }
 
-// Determine base path for routing (for GitHub Pages deployment)
+// Determine base path for routing (for GitHub Pages deployment only)
 const getBasename = () => {
-  // In production, check if we're in /app/ subfolder
+  // Never use basename on native platforms (Android/iOS)
+  if (Capacitor.isNativePlatform()) {
+    return ''
+  }
+  // In production web, check if we're in /app/ subfolder
   if (import.meta.env.PROD && window.location.pathname.startsWith('/app')) {
     return '/app'
   }
