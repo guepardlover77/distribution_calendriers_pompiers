@@ -68,8 +68,15 @@ const DemoOverlay: React.FC = () => {
 
       {/* Style pour decaler le contenu sous le bandeau */}
       <style>{`
-        .demo-mode {
-          padding-top: 40px !important;
+        .demo-mode ion-router-outlet,
+        .demo-mode ion-tabs {
+          top: 40px !important;
+        }
+        .demo-mode ion-header {
+          top: 40px !important;
+        }
+        .demo-mode ion-content {
+          --offset-top: 40px !important;
         }
       `}</style>
     </>
