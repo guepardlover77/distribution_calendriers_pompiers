@@ -20,6 +20,7 @@ import Stats from '@/pages/Stats'
 import Admin from '@/pages/Admin'
 import AdminBinomes from '@/pages/AdminBinomes'
 import AdminZones from '@/pages/AdminZones'
+import AdminLogs from '@/pages/AdminLogs'
 
 // Protected Route wrapper
 interface ProtectedRouteProps {
@@ -127,6 +128,7 @@ const AppRouter: React.FC = () => {
         {/* Routes Admin (hors tabs) */}
         <AdminRoute exact path="/admin/binomes" component={AdminBinomes} />
         <AdminRoute exact path="/admin/zones" component={AdminZones} />
+        <AdminRoute exact path="/admin/logs" component={AdminLogs} />
 
         <ProtectedRoute path="/tabs" component={MainTabs} />
 

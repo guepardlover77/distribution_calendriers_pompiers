@@ -17,10 +17,13 @@ import {
   IonFab,
   IonFabButton,
   IonModal,
+  IonActionSheet,
+  IonAlert,
   useIonToast
 } from '@ionic/react'
-import { addOutline, documentTextOutline } from 'ionicons/icons'
+import { addOutline, documentTextOutline, createOutline, trashOutline, closeOutline } from 'ionicons/icons'
 import { useDistributionsStore } from '@/stores/distributionsStore'
+import { Distribution } from '@/services/storage'
 import DistributionModal from '@/components/DistributionModal'
 
 const List: React.FC = () => {
@@ -28,10 +31,18 @@ const List: React.FC = () => {
   const filteredItems = useDistributionsStore(state => state.filteredItems)
   const stats = useDistributionsStore(state => state.stats)
   const setFilter = useDistributionsStore(state => state.setFilter)
+  const removeDistribution = useDistributionsStore(state => state.remove)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingDistribution, setEditingDistribution] = useState<Distribution | null>(null)
+  const [selectedDistribution, setSelectedDistribution] = useState<Distribution | null>(null)
+  const [isActionSheetOpen, setIsActionSheetOpen] = useState(false)
+  const [deleteConfirmAlert, setDeleteConfirmAlert] = useState<{
+    isOpen: boolean
+    distribution?: Distribution
+  }>({ isOpen: false })
 
   const items = filteredItems()
   const currentStats = stats()
@@ -66,12 +77,63 @@ const List: React.FC = () => {
     setFilter('status', value)
   }
 
-  const viewDetails = async (dist: { address: string }) => {
-    presentToast({
-      message: `Details: ${dist.address}`,
-      duration: 2000,
-      position: 'top'
-    })
+  const handleDistributionClick = (dist: Distribution) => {
+    setSelectedDistribution(dist)
+    setIsActionSheetOpen(true)
+  }
+
+  const handleEdit = () => {
+    if (selectedDistribution) {
+      setEditingDistribution(selectedDistribution)
+      setIsModalOpen(true)
+    }
+    setIsActionSheetOpen(false)
+  }
+
+  const handleDelete = () => {
+    if (selectedDistribution) {
+      setDeleteConfirmAlert({
+        isOpen: true,
+        distribution: selectedDistribution
+      })
+    }
+    setIsActionSheetOpen(false)
+  }
+
+  const confirmDelete = async () => {
+    if (deleteConfirmAlert.distribution) {
+      try {
+        await removeDistribution(deleteConfirmAlert.distribution.id)
+        presentToast({
+          message: 'Distribution supprimee avec succes',
+          duration: 2000,
+          color: 'success',
+          position: 'top'
+        })
+      } catch (error) {
+        console.error('Error deleting distribution:', error)
+        presentToast({
+          message: 'Erreur lors de la suppression',
+          duration: 2000,
+          color: 'danger',
+          position: 'top'
+        })
+      }
+    }
+    setDeleteConfirmAlert({ isOpen: false })
+  }
+
+  const handleModalDismiss = (saved?: boolean) => {
+    setIsModalOpen(false)
+    setEditingDistribution(null)
+    if (saved) {
+      presentToast({
+        message: 'Distribution mise a jour',
+        duration: 2000,
+        color: 'success',
+        position: 'top'
+      })
+    }
   }
 
   return (
@@ -134,7 +196,7 @@ const List: React.FC = () => {
                 key={dist.id}
                 className={`distribution-item ${dist.status}`}
                 button
-                onClick={() => viewDetails(dist)}
+                onClick={() => handleDistributionClick(dist)}
               >
                 <IonLabel>
                   <h2>{dist.address}</h2>
@@ -161,9 +223,56 @@ const List: React.FC = () => {
           </IonFabButton>
         </IonFab>
 
-        <IonModal isOpen={isModalOpen} onDidDismiss={() => setIsModalOpen(false)}>
-          <DistributionModal onDismiss={() => setIsModalOpen(false)} />
+        <IonModal isOpen={isModalOpen} onDidDismiss={() => handleModalDismiss(false)}>
+          <DistributionModal
+            distribution={editingDistribution || undefined}
+            onDismiss={handleModalDismiss}
+          />
         </IonModal>
+
+        {/* Action Sheet for distribution options */}
+        <IonActionSheet
+          isOpen={isActionSheetOpen}
+          onDidDismiss={() => setIsActionSheetOpen(false)}
+          header={selectedDistribution?.address}
+          buttons={[
+            {
+              text: 'Modifier',
+              icon: createOutline,
+              handler: handleEdit
+            },
+            {
+              text: 'Supprimer',
+              role: 'destructive',
+              icon: trashOutline,
+              handler: handleDelete
+            },
+            {
+              text: 'Annuler',
+              role: 'cancel',
+              icon: closeOutline
+            }
+          ]}
+        />
+
+        {/* Alert for distribution deletion confirmation */}
+        <IonAlert
+          isOpen={deleteConfirmAlert.isOpen}
+          onDidDismiss={() => setDeleteConfirmAlert({ isOpen: false })}
+          header="Confirmer la suppression"
+          message={`Voulez-vous vraiment supprimer la distribution a l'adresse "${deleteConfirmAlert.distribution?.address}" ?`}
+          buttons={[
+            {
+              text: 'Annuler',
+              role: 'cancel'
+            },
+            {
+              text: 'Supprimer',
+              role: 'destructive',
+              handler: confirmDelete
+            }
+          ]}
+        />
       </IonContent>
     </IonPage>
   )

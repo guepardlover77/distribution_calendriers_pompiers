@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { apiService } from '@/services/api'
+import { loggingService } from '@/services/loggingService'
 import { useDemoStore, isDemoMode } from './demoStore'
 
 export interface Binome {
@@ -63,6 +64,15 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
         binomes: [...state.binomes, newBinome],
         loading: false
       }))
+
+      // Log creation en mode demo
+      await loggingService.logCreate('binome', newBinome.Id || newBinome.id || '', newBinome.binome_name, {
+        username: newBinome.username,
+        binome_name: newBinome.binome_name,
+        assigned_zone: newBinome.assigned_zone,
+        is_admin: newBinome.is_admin
+      })
+
       return newBinome
     }
 
@@ -86,6 +96,14 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
         loading: false
       }))
 
+      // Log creation
+      await loggingService.logCreate('binome', newBinome.Id || newBinome.id || '', newBinome.binome_name, {
+        username: newBinome.username,
+        binome_name: newBinome.binome_name,
+        assigned_zone: newBinome.assigned_zone,
+        is_admin: newBinome.is_admin
+      })
+
       return newBinome
     } catch (error) {
       const message = (error as Error).message || 'Erreur lors de la creation du binome'
@@ -95,6 +113,14 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
   },
 
   updateBinome: async (id: string, data: Partial<Binome>) => {
+    // Capturer les anciennes valeurs AVANT la modification
+    const oldBinome = get().binomes.find(b => b.Id === id || b.id === id)
+    const oldValues = oldBinome ? {
+      binome_name: oldBinome.binome_name,
+      assigned_zone: oldBinome.assigned_zone,
+      is_admin: oldBinome.is_admin
+    } : {}
+
     // Mode démo : modifier localement uniquement
     if (isDemoMode()) {
       const demoStore = useDemoStore.getState()
@@ -105,6 +131,10 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
         ),
         loading: false
       }))
+
+      // Log modification en mode demo
+      await loggingService.logUpdate('binome', id, oldBinome?.binome_name || id, oldValues, data)
+
       return { ...data, id } as Binome
     }
 
@@ -133,6 +163,9 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
         loading: false
       }))
 
+      // Log modification
+      await loggingService.logUpdate('binome', id, oldBinome?.binome_name || id, oldValues, data)
+
       return updatedBinome
     } catch (error) {
       const message = (error as Error).message || 'Erreur lors de la mise a jour du binome'
@@ -142,6 +175,14 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
   },
 
   deleteBinome: async (id: string) => {
+    // Capturer les anciennes valeurs AVANT la suppression
+    const oldBinome = get().binomes.find(b => b.Id === id || b.id === id)
+    const oldValues = oldBinome ? {
+      username: oldBinome.username,
+      binome_name: oldBinome.binome_name,
+      assigned_zone: oldBinome.assigned_zone
+    } : {}
+
     // Mode démo : supprimer localement uniquement
     if (isDemoMode()) {
       const demoStore = useDemoStore.getState()
@@ -150,6 +191,10 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
         binomes: state.binomes.filter(b => b.Id !== id && b.id !== id),
         loading: false
       }))
+
+      // Log suppression en mode demo
+      await loggingService.logDelete('binome', id, oldBinome?.binome_name || id, oldValues)
+
       return
     }
 
@@ -166,6 +211,9 @@ export const useBinomesStore = create<BinomesState>((set, get) => ({
         binomes: state.binomes.filter(b => b.Id !== id && b.id !== id),
         loading: false
       }))
+
+      // Log suppression
+      await loggingService.logDelete('binome', id, oldBinome?.binome_name || id, oldValues)
     } catch (error) {
       const message = (error as Error).message || 'Erreur lors de la suppression du binome'
       set({ error: message, loading: false })

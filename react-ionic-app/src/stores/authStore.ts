@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { apiService } from '@/services/api'
 import { storageService, SessionData } from '@/services/storage'
+import { loggingService } from '@/services/loggingService'
 import { useDemoStore } from './demoStore'
 import { DEMO_USER } from '@/data/demoData'
 
@@ -112,6 +113,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setupSessionTimeout(set, get)
     setupActivityListeners(set, get)
 
+    // Log connexion
+    await loggingService.logLogin(sessionUser.username, sessionUser.binome_name, false)
+
     return sessionUser
   },
 
@@ -133,9 +137,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Setup timeouts
     setupSessionTimeout(set, get)
     setupActivityListeners(set, get)
+
+    // Log connexion demo
+    await loggingService.logLogin(sessionUser.username, sessionUser.binome_name, true)
   },
 
   logout: async () => {
+    // Log deconnexion AVANT de nettoyer la session
+    await loggingService.logLogout()
+
     const state = get()
     if (state.sessionTimeoutId) {
       clearTimeout(state.sessionTimeoutId)

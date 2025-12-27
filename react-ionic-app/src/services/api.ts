@@ -10,6 +10,7 @@ interface ApiConfig {
     distributions: string
     zones: string
     binomes: string
+    logs: string
   }
 }
 
@@ -43,7 +44,8 @@ class ApiService {
       tables: {
         distributions: 'Distributions',
         zones: 'Zones',
-        binomes: 'Binomes'
+        binomes: 'Binomes',
+        logs: 'Logs'
       }
     }
 

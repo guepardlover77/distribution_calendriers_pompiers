@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { apiService } from '@/services/api'
 import { storageService, Distribution } from '@/services/storage'
+import { loggingService } from '@/services/loggingService'
 import { useAuthStore } from './authStore'
 import { useDemoStore, isDemoMode } from './demoStore'
 
@@ -199,6 +200,15 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
       const demoStore = useDemoStore.getState()
       const newDist = demoStore.addDistribution(distribution)
       set(state => ({ items: [...state.items, newDist] }))
+
+      // Log creation en mode demo
+      await loggingService.logCreate('distribution', newDist.id, newDist.address, {
+        address: newDist.address,
+        status: newDist.status,
+        amount: newDist.amount,
+        binome_id: newDist.binome_id
+      })
+
       return newDist
     }
 
@@ -222,6 +232,14 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
     set(state => ({ items: [...state.items, newDist] }))
     await get().saveToStorage()
 
+    // Log creation
+    await loggingService.logCreate('distribution', newDist.id, newDist.address, {
+      address: newDist.address,
+      status: newDist.status,
+      amount: newDist.amount,
+      binome_id: newDist.binome_id
+    })
+
     // Background sync with API
     try {
       if (apiService.config) {
@@ -239,6 +257,16 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   update: async (id, updates) => {
+    // Capturer les anciennes valeurs AVANT la modification
+    const oldItem = get().items.find(d => d.id === id)
+    const oldValues = oldItem ? {
+      address: oldItem.address,
+      status: oldItem.status,
+      amount: oldItem.amount,
+      notes: oldItem.notes,
+      payment_method: oldItem.payment_method
+    } : {}
+
     // Mode démo : modifier localement uniquement
     if (isDemoMode()) {
       const demoStore = useDemoStore.getState()
@@ -250,6 +278,10 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
             : d
         )
       }))
+
+      // Log modification en mode demo
+      await loggingService.logUpdate('distribution', id, oldItem?.address || id, oldValues, updates)
+
       return
     }
 
@@ -261,6 +293,9 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
       )
     }))
     await get().saveToStorage()
+
+    // Log modification
+    await loggingService.logUpdate('distribution', id, oldItem?.address || id, oldValues, updates)
 
     // Background sync with API
     try {
@@ -280,6 +315,15 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
   },
 
   remove: async (id) => {
+    // Capturer les anciennes valeurs AVANT la suppression
+    const oldItem = get().items.find(d => d.id === id)
+    const oldValues = oldItem ? {
+      address: oldItem.address,
+      status: oldItem.status,
+      amount: oldItem.amount,
+      binome_id: oldItem.binome_id
+    } : {}
+
     // Mode démo : supprimer localement uniquement
     if (isDemoMode()) {
       const demoStore = useDemoStore.getState()
@@ -287,6 +331,10 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
       set(state => ({
         items: state.items.filter(d => d.id !== id)
       }))
+
+      // Log suppression en mode demo
+      await loggingService.logDelete('distribution', id, oldItem?.address || id, oldValues)
+
       return
     }
 
@@ -294,6 +342,9 @@ export const useDistributionsStore = create<DistributionsState>((set, get) => ({
       items: state.items.filter(d => d.id !== id)
     }))
     await get().saveToStorage()
+
+    // Log suppression
+    await loggingService.logDelete('distribution', id, oldItem?.address || id, oldValues)
 
     // Background sync with API
     try {

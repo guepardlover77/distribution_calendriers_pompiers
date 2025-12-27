@@ -21,7 +21,8 @@ import {
   peopleOutline,
   mapOutline,
   statsChartOutline,
-  chevronForward
+  chevronForward,
+  documentTextOutline
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/authStore'
 import { useBinomesStore } from '@/stores/binomesStore'
@@ -123,6 +124,15 @@ const Admin: React.FC = () => {
                   ) : (
                     <IonBadge slot="end" color="success">{zones.length}</IonBadge>
                   )}
+                  <IonIcon icon={chevronForward} slot="end" color="medium" />
+                </IonItem>
+
+                <IonItem button routerLink="/admin/logs" detail={false}>
+                  <IonIcon icon={documentTextOutline} slot="start" color="tertiary" />
+                  <IonLabel>
+                    <h2>Journal d'activite</h2>
+                    <p>Historique des actions utilisateurs</p>
+                  </IonLabel>
                   <IonIcon icon={chevronForward} slot="end" color="medium" />
                 </IonItem>
               </IonList>

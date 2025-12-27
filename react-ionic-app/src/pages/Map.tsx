@@ -103,6 +103,7 @@ const Map: React.FC = () => {
   const currentUser = useAuthStore(state => state.currentUser)
   const fetchAll = useDistributionsStore(state => state.fetchAll)
   const filteredItems = useDistributionsStore(state => state.filteredItems)
+  const removeDistribution = useDistributionsStore(state => state.remove)
 
   // Zones store
   const { zones, fetchZones, createZone, deleteZone } = useZonesStore()
@@ -128,6 +129,10 @@ const Map: React.FC = () => {
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false)
   const [editingDistribution, setEditingDistribution] = useState<Distribution | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [deleteConfirmAlert, setDeleteConfirmAlert] = useState<{
+    isOpen: boolean
+    distribution?: Distribution
+  }>({ isOpen: false })
 
   // Demander la permission de geolocalisation
   const requestLocationPermission = async () => {
@@ -259,7 +264,10 @@ const Map: React.FC = () => {
           <span style="color: ${color}">&bull; ${getStatusLabel(dist.status)}</span>
           ${dist.amount > 0 ? `<br><strong>Montant:</strong> ${dist.amount.toFixed(2)} EUR` : ''}
           ${dist.payment_method && dist.payment_method !== 'non_specifie' ? `<br><strong>Paiement:</strong> ${dist.payment_method}` : ''}
-          <br><button class="distribution-edit-btn" data-distribution-id="${dist.id}" style="margin-top: 8px; padding: 6px 12px; background: var(--ion-color-primary, #3b82f6); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">Modifier</button>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <button class="distribution-edit-btn" data-distribution-id="${dist.id}" style="flex: 1; padding: 6px 12px; background: var(--ion-color-primary, #3b82f6); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Modifier</button>
+            <button class="distribution-delete-btn" data-distribution-id="${dist.id}" style="flex: 1; padding: 6px 12px; background: var(--ion-color-danger, #ef4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Supprimer</button>
+          </div>
         </div>
       `)
 
@@ -350,9 +358,9 @@ const Map: React.FC = () => {
         if (!container) return
 
         // Handler pour suppression de zone
-        const deleteBtn = container.querySelector('.zone-delete-btn')
-        if (deleteBtn) {
-          deleteBtn.addEventListener('click', async (evt) => {
+        const zoneDeleteBtn = container.querySelector('.zone-delete-btn')
+        if (zoneDeleteBtn) {
+          zoneDeleteBtn.addEventListener('click', async (evt) => {
             const zoneId = (evt.target as HTMLElement).getAttribute('data-zone-id')
             if (zoneId) {
               try {
@@ -388,6 +396,25 @@ const Map: React.FC = () => {
               if (distribution) {
                 setEditingDistribution(distribution)
                 setIsModalOpen(true)
+                mapRef.current?.closePopup()
+              }
+            }
+          })
+        }
+
+        // Handler pour suppression de distribution
+        const distributionDeleteBtn = container.querySelector('.distribution-delete-btn')
+        if (distributionDeleteBtn) {
+          distributionDeleteBtn.addEventListener('click', (evt) => {
+            const distributionId = (evt.target as HTMLElement).getAttribute('data-distribution-id')
+            if (distributionId) {
+              const items = filteredItems()
+              const distribution = items.find(d => d.id === distributionId)
+              if (distribution) {
+                setDeleteConfirmAlert({
+                  isOpen: true,
+                  distribution
+                })
                 mapRef.current?.closePopup()
               }
             }
@@ -820,6 +847,46 @@ const Map: React.FC = () => {
               text: 'Creer',
               handler: (data) => {
                 handleZoneNameSubmit(data.zoneName)
+              }
+            }
+          ]}
+        />
+
+        {/* Alert for distribution deletion confirmation */}
+        <IonAlert
+          isOpen={deleteConfirmAlert.isOpen}
+          onDidDismiss={() => setDeleteConfirmAlert({ isOpen: false })}
+          header="Confirmer la suppression"
+          message={`Voulez-vous vraiment supprimer la distribution a l'adresse "${deleteConfirmAlert.distribution?.address}" ?`}
+          buttons={[
+            {
+              text: 'Annuler',
+              role: 'cancel'
+            },
+            {
+              text: 'Supprimer',
+              role: 'destructive',
+              handler: async () => {
+                if (deleteConfirmAlert.distribution) {
+                  try {
+                    await removeDistribution(deleteConfirmAlert.distribution.id)
+                    presentToast({
+                      message: 'Distribution supprimee avec succes',
+                      duration: 2000,
+                      color: 'success',
+                      position: 'top'
+                    })
+                    updateMarkers()
+                  } catch (error) {
+                    console.error('Error deleting distribution:', error)
+                    presentToast({
+                      message: 'Erreur lors de la suppression',
+                      duration: 2000,
+                      color: 'danger',
+                      position: 'top'
+                    })
+                  }
+                }
               }
             }
           ]}

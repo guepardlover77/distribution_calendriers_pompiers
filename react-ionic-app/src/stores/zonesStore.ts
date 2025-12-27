@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { apiService } from '@/services/api'
+import { loggingService } from '@/services/loggingService'
 import { useDemoStore, isDemoMode } from './demoStore'
 
 export interface Zone {
@@ -63,6 +64,14 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
         zones: [...state.zones, newZone],
         loading: false
       }))
+
+      // Log creation en mode demo
+      await loggingService.logCreate('zone', newZone.Id || newZone.id || '', newZone.name, {
+        name: newZone.name,
+        color: newZone.color,
+        binome_id: newZone.binome_id
+      })
+
       return newZone
     }
 
@@ -89,6 +98,13 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
         loading: false
       }))
 
+      // Log creation
+      await loggingService.logCreate('zone', newZone.Id || newZone.id || '', newZone.name, {
+        name: newZone.name,
+        color: newZone.color,
+        binome_id: newZone.binome_id
+      })
+
       return newZone
     } catch (error) {
       console.error('[ZonesStore] Error creating zone:', error)
@@ -99,6 +115,15 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   },
 
   updateZone: async (id: string, data: Partial<Zone>) => {
+    // Capturer les anciennes valeurs AVANT la modification
+    const oldZone = get().zones.find(z => z.Id === id || z.id === id)
+    const oldValues = oldZone ? {
+      name: oldZone.name,
+      color: oldZone.color,
+      binome_id: oldZone.binome_id,
+      binome_name: oldZone.binome_name
+    } : {}
+
     // Mode démo : modifier localement uniquement
     if (isDemoMode()) {
       const demoStore = useDemoStore.getState()
@@ -109,6 +134,10 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
         ),
         loading: false
       }))
+
+      // Log modification en mode demo
+      await loggingService.logUpdate('zone', id, oldZone?.name || id, oldValues, data)
+
       return { ...data, id } as Zone
     }
 
@@ -132,6 +161,9 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
         loading: false
       }))
 
+      // Log modification
+      await loggingService.logUpdate('zone', id, oldZone?.name || id, oldValues, data)
+
       return updatedZone
     } catch (error) {
       const message = (error as Error).message || 'Erreur lors de la mise a jour de la zone'
@@ -141,6 +173,14 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
   },
 
   deleteZone: async (id: string) => {
+    // Capturer les anciennes valeurs AVANT la suppression
+    const oldZone = get().zones.find(z => z.Id === id || z.id === id)
+    const oldValues = oldZone ? {
+      name: oldZone.name,
+      color: oldZone.color,
+      binome_id: oldZone.binome_id
+    } : {}
+
     // Mode démo : supprimer localement uniquement
     if (isDemoMode()) {
       const demoStore = useDemoStore.getState()
@@ -149,6 +189,10 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
         zones: state.zones.filter(z => z.Id !== id && z.id !== id),
         loading: false
       }))
+
+      // Log suppression en mode demo
+      await loggingService.logDelete('zone', id, oldZone?.name || id, oldValues)
+
       return
     }
 
@@ -165,6 +209,9 @@ export const useZonesStore = create<ZonesState>((set, get) => ({
         zones: state.zones.filter(z => z.Id !== id && z.id !== id),
         loading: false
       }))
+
+      // Log suppression
+      await loggingService.logDelete('zone', id, oldZone?.name || id, oldValues)
     } catch (error) {
       const message = (error as Error).message || 'Erreur lors de la suppression de la zone'
       set({ error: message, loading: false })
