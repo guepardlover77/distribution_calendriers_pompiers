@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'com.pompiers.calendriers',
-  appName: 'Calendriers Pompiers',
+  appName: 'Caleo',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
