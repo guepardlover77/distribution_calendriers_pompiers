@@ -150,7 +150,7 @@ jobs:
           echo "Updated to versionCode: $VERSION_CODE, versionName: $VERSION_NAME"
 
       - name: Setup keystore for signing
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: ${{ secrets.KEYSTORE_BASE64 }}
         working-directory: react-ionic-app/android
         run: |
           # Decode keystore from base64
@@ -167,7 +167,7 @@ jobs:
           echo "Keystore setup completed"
 
       - name: Configure signing in build.gradle
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: ${{ secrets.KEYSTORE_BASE64 }}
         working-directory: react-ionic-app/android/app
         run: |
           # Add signing configuration to build.gradle
