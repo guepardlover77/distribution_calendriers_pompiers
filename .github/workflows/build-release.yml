@@ -149,6 +149,57 @@ jobs:
           sed -i "s/versionName \"1.0\"/versionName \"$VERSION_NAME\"/" build.gradle
           echo "Updated to versionCode: $VERSION_CODE, versionName: $VERSION_NAME"
 
+      - name: Setup keystore for signing
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        working-directory: react-ionic-app/android
+        run: |
+          # Decode keystore from base64
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > calendriers-pompiers.keystore
+
+          # Create keystore.properties file
+          cat > keystore.properties << EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=../calendriers-pompiers.keystore
+          EOF
+
+          echo "Keystore setup completed"
+
+      - name: Configure signing in build.gradle
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        working-directory: react-ionic-app/android/app
+        run: |
+          # Add signing configuration to build.gradle
+          # Insert after "apply plugin: 'com.android.application'"
+          sed -i "/apply plugin: 'com.android.application'/a\\
+          \\n\
+          // Load keystore properties\\n\
+          def keystorePropertiesFile = rootProject.file(\"keystore.properties\")\\n\
+          def keystoreProperties = new Properties()\\n\
+          if (keystorePropertiesFile.exists()) {\\n\
+              keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\\n\
+          }" build.gradle
+
+          # Add signingConfigs block before buildTypes
+          sed -i "/defaultConfig {/,/}/a\\
+          \\n\
+          signingConfigs {\\n\
+              release {\\n\
+                  if (keystorePropertiesFile.exists()) {\\n\
+                      keyAlias keystoreProperties['keyAlias']\\n\
+                      keyPassword keystoreProperties['keyPassword']\\n\
+                      storeFile file(keystoreProperties['storeFile'])\\n\
+                      storePassword keystoreProperties['storePassword']\\n\
+                  }\\n\
+              }\\n\
+          }" build.gradle
+
+          # Add signingConfig reference in release buildType
+          sed -i "/buildTypes {/,/release {/s/release {/release {\\n            signingConfig signingConfigs.release/" build.gradle
+
+          echo "Signing configuration added to build.gradle"
+
       - name: Make gradlew executable
         working-directory: react-ionic-app/android
         run: chmod +x gradlew
@@ -157,10 +208,9 @@ jobs:
         working-directory: react-ionic-app/android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Build APK (Release unsigned)
+      - name: Build APK (Release)
         working-directory: react-ionic-app/android
         run: ./gradlew assembleRelease --no-daemon
-        continue-on-error: true
 
       - name: Rename APK files
         run: |
@@ -174,11 +224,15 @@ jobs:
             echo "Debug APK copied"
           fi
 
-          # Copy release APK if exists
-          if [ -f "react-ionic-app/android/app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
+          # Copy release APK (signed or unsigned)
+          if [ -f "react-ionic-app/android/app/build/outputs/apk/release/app-release.apk" ]; then
+            cp react-ionic-app/android/app/build/outputs/apk/release/app-release.apk \
+               artifacts/calendriers-pompiers-v${VERSION}-release.apk
+            echo "Release APK (signed) copied"
+          elif [ -f "react-ionic-app/android/app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
             cp react-ionic-app/android/app/build/outputs/apk/release/app-release-unsigned.apk \
                artifacts/calendriers-pompiers-v${VERSION}-release-unsigned.apk
-            echo "Release APK copied"
+            echo "Release APK (unsigned) copied"
           fi
 
           ls -la artifacts/
@@ -210,14 +264,15 @@ jobs:
 
             ### Fichiers disponibles
 
-            - `calendriers-pompiers-v${{ steps.version.outputs.version }}-debug.apk` : Version debug (pour tests)
-            - `calendriers-pompiers-v${{ steps.version.outputs.version }}-release-unsigned.apk` : Version release non signee
+            - `calendriers-pompiers-v${{ steps.version.outputs.version }}-debug.apk` : Version debug (pour tests uniquement)
+            - `calendriers-pompiers-v${{ steps.version.outputs.version }}-release.apk` : **Version release signée (RECOMMANDÉE pour production)**
 
             ### Installation
 
-            1. Telechargez le fichier APK debug
-            2. Sur votre telephone Android, activez "Sources inconnues" dans les parametres
-            3. Installez l'APK
+            1. Téléchargez le fichier APK release (version signée)
+            2. Sur votre téléphone Android, activez "Sources inconnues" dans les paramètres de sécurité
+            3. Ouvrez le fichier APK téléchargé pour l'installer
+            4. Acceptez les permissions demandées (géolocalisation, etc.)
 
             ---
             *Build automatique genere par GitHub Actions*
